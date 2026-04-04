@@ -6,9 +6,16 @@ import {
   ActivityIndicator,
   Pressable,
   Keyboard,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { Heart, ChevronsUp, ArrowRight } from 'lucide-react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Heart, ChevronsUp, ChevronsDown, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing, radii } from '@/lib/theme';
 import { useAppStore } from '@/lib/store';
@@ -39,14 +46,13 @@ const MODE_LINE_COLORS: Record<TransitMode, string> = {
   walk: '#9CA3AF',
 };
 
-/** Snap points: collapsed shows 1 card, expanded fills to just below search */
-const SNAP_COLLAPSED = '30%';
-const SNAP_EXPANDED = '83%';
+const HANDLE_HEIGHT = 24;
+const SPRING_CONFIG = { damping: 20, stiffness: 200 };
 
 export default function MapScreen() {
   const router = useRouter();
-  const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<any>(null);
+  const { height: screenHeight } = useWindowDimensions();
   const {
     origin,
     destination,
@@ -63,9 +69,51 @@ export default function MapScreen() {
     showOnlyAvailable,
   } = useAppStore();
 
-  const snapPoints = useMemo(() => [SNAP_COLLAPSED, SNAP_EXPANDED], []);
-  const [sheetIndex, setSheetIndex] = useState(0);
-  const isExpanded = sheetIndex >= 1;
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Sheet heights
+  const collapsedHeight = 185;
+  const expandedHeight = screenHeight - 300; // leave space for search area + status bar
+
+  const sheetHeight = useSharedValue(collapsedHeight);
+  const startHeight = useSharedValue(collapsedHeight);
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startHeight.value = sheetHeight.value;
+    })
+    .onUpdate((e) => {
+      const newHeight = startHeight.value - e.translationY;
+      sheetHeight.value = Math.max(
+        collapsedHeight,
+        Math.min(expandedHeight, newHeight),
+      );
+    })
+    .onEnd((e) => {
+      const mid = (collapsedHeight + expandedHeight) / 2;
+      if (sheetHeight.value > mid || e.velocityY < -500) {
+        sheetHeight.value = withSpring(expandedHeight, SPRING_CONFIG);
+        setIsExpanded(true);
+      } else {
+        sheetHeight.value = withSpring(collapsedHeight, SPRING_CONFIG);
+        setIsExpanded(false);
+      }
+    })
+    .runOnJS(true);
+
+  const animatedSheetStyle = useAnimatedStyle(() => ({
+    height: sheetHeight.value,
+  }));
+
+  const snapToCollapsed = useCallback(() => {
+    sheetHeight.value = withSpring(collapsedHeight, SPRING_CONFIG);
+    setIsExpanded(false);
+  }, [collapsedHeight, sheetHeight]);
+
+  const snapToExpanded = useCallback(() => {
+    sheetHeight.value = withSpring(expandedHeight, SPRING_CONFIG);
+    setIsExpanded(true);
+  }, [expandedHeight, sheetHeight]);
 
   const [originCoords, setOriginCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [destCoords, setDestCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -102,8 +150,7 @@ export default function MapScreen() {
     }));
   }, [visibleRoutes, selectedRoute]);
 
-  // Precompute polyline data so Polyline components use stable keys
-  // and update coordinates in-place instead of remounting native views
+  // Precompute polyline data
   const polylines = useMemo(() => {
     if (!selectedRoute) return [];
     let idx = 0;
@@ -229,7 +276,7 @@ export default function MapScreen() {
       setSelectedRouteId(foundRoutes[0]?.id ?? null);
 
       if (foundRoutes.length > 0) {
-        bottomSheetRef.current?.snapToIndex(0);
+        snapToCollapsed();
 
         const allCoords = [
           { latitude: origLat!, longitude: origLon! },
@@ -251,7 +298,7 @@ export default function MapScreen() {
     } finally {
       setIsSearching(false);
     }
-  }, [origin, destination, originCoords, destCoords, walkingSpeed, setIsSearching, setRoutes]);
+  }, [origin, destination, originCoords, destCoords, walkingSpeed, setIsSearching, setRoutes, snapToCollapsed]);
 
   // Auto-search when both coordinates are set (from autocomplete or location)
   const lastSearchKey = useRef('');
@@ -294,10 +341,6 @@ export default function MapScreen() {
     }
   }, [origin, destination, isFavourited, addCommutePair]);
 
-  const handleExpandSheet = useCallback(() => {
-    bottomSheetRef.current?.snapToIndex(1);
-  }, []);
-
   const getAvailColor = (availability: string) => {
     if (availability === 'high') return colors.availHigh;
     if (availability === 'medium') return colors.availMedium;
@@ -306,6 +349,7 @@ export default function MapScreen() {
 
   const hasResults = hasSearched && visibleRoutes.length > 0;
   const otherRouteCount = Math.max(0, visibleRoutes.length - 1);
+  const showSheet = hasResults || isSearching || error;
 
   return (
     <View style={styles.container}>
@@ -455,111 +499,119 @@ export default function MapScreen() {
       </View>
 
       {/* Bottom Sheet */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        snapPoints={snapPoints}
-        index={0}
-        onChange={setSheetIndex}
-        backgroundStyle={styles.bottomSheetBg}
-        handleIndicatorStyle={styles.handleIndicator}
-        enablePanDownToClose={false}
-      >
-        {hasResults ? (
-          isExpanded ? (
-            /* ── EXPANDED: summary + all cards scrollable ── */
-            <>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryLeft}>
-                  <Text style={styles.summaryCity}>{origin.split(',')[0]}</Text>
-                  <ArrowRight size={14} color={colors.textMuted} />
-                  <Text style={styles.summaryCity}>{destination.split(',')[0]}</Text>
-                </View>
-                <Pressable style={styles.summaryRight} onPress={handleToggleFavourite}>
-                  <Heart
-                    size={16}
-                    color={colors.availLow}
-                    fill={isFavourited ? colors.availLow : 'none'}
-                  />
-                  <Text style={styles.favText}>Suosikki</Text>
-                </Pressable>
-              </View>
+      {showSheet && (
+        <Animated.View
+          style={[
+            styles.sheet,
+            { bottom: 0 },
+            animatedSheetStyle,
+          ]}
+        >
+          {/* Drag handle */}
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.handleArea}>
+              <View style={styles.handleIndicator} />
+            </View>
+          </GestureDetector>
 
-              <BottomSheetScrollView
-                style={styles.cardsScroll}
-                contentContainerStyle={styles.cardsContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {visibleRoutes.map((route, index) => (
-                  <View key={route.id} style={index > 0 ? { marginTop: 10 } : undefined}>
-                    <RouteCard
-                      route={route}
-                      onPress={() => handleSelectRoute(route.id)}
-                      onLongPress={() => handleOpenRouteDetail(route.id)}
-                      isBest={index === 0}
-                      isSelected={route.id === selectedRoute?.id}
-                    />
+          {hasResults ? (
+            isExpanded ? (
+              /* ── EXPANDED: summary + all cards scrollable ── */
+              <>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryLeft}>
+                    <Text style={styles.summaryCity}>{origin.split(',')[0]}</Text>
+                    <ArrowRight size={14} color={colors.textMuted} />
+                    <Text style={styles.summaryCity}>{destination.split(',')[0]}</Text>
                   </View>
-                ))}
-              </BottomSheetScrollView>
-            </>
-          ) : (
-            /* ── COLLAPSED: summary + best card + peek hint ── */
-            <>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryLeft}>
-                  <Text style={styles.summaryCity}>{origin.split(',')[0]}</Text>
-                  <ArrowRight size={14} color={colors.textMuted} />
-                  <Text style={styles.summaryCity}>{destination.split(',')[0]}</Text>
+                  <Pressable style={styles.summaryRight} onPress={handleToggleFavourite}>
+                    <Heart
+                      size={16}
+                      color={colors.availLow}
+                      fill={isFavourited ? colors.availLow : 'none'}
+                    />
+                    <Text style={styles.favText}>Suosikki</Text>
+                  </Pressable>
                 </View>
-                <Pressable style={styles.summaryRight} onPress={handleToggleFavourite}>
-                  <Heart
-                    size={16}
-                    color={colors.availLow}
-                    fill={isFavourited ? colors.availLow : 'none'}
+
+                {/* Collapse button */}
+                <Pressable style={styles.peekHint} onPress={snapToCollapsed}>
+                  <ChevronsDown size={16} color={colors.textMuted} />
+                  <Text style={styles.peekText}>Pienennä</Text>
+                </Pressable>
+
+                <ScrollView
+                  style={styles.cardsScroll}
+                  contentContainerStyle={styles.cardsContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {visibleRoutes.map((route, index) => (
+                    <View key={route.id} style={index > 0 ? { marginTop: 10 } : undefined}>
+                      <RouteCard
+                        route={route}
+                        onPress={() => handleSelectRoute(route.id)}
+                        onLongPress={() => handleOpenRouteDetail(route.id)}
+                        isBest={index === 0}
+                        isSelected={route.id === selectedRoute?.id}
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
+            ) : (
+              /* ── COLLAPSED: summary + best card + peek hint ── */
+              <>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryLeft}>
+                    <Text style={styles.summaryCity}>{origin.split(',')[0]}</Text>
+                    <ArrowRight size={14} color={colors.textMuted} />
+                    <Text style={styles.summaryCity}>{destination.split(',')[0]}</Text>
+                  </View>
+                  <Pressable style={styles.summaryRight} onPress={handleToggleFavourite}>
+                    <Heart
+                      size={16}
+                      color={colors.availLow}
+                      fill={isFavourited ? colors.availLow : 'none'}
+                    />
+                    <Text style={styles.favText}>Suosikki</Text>
+                  </Pressable>
+                </View>
+
+                {/* Best route only */}
+                <View style={styles.collapsedCard}>
+                  <RouteCard
+                    route={selectedRoute!}
+                    onPress={() => handleSelectRoute(selectedRoute!.id)}
+                    onLongPress={() => handleOpenRouteDetail(selectedRoute!.id)}
+                    isBest={visibleRoutes[0]?.id === selectedRoute?.id}
+                    isSelected
                   />
-                  <Text style={styles.favText}>Suosikki</Text>
-                </Pressable>
-              </View>
+                </View>
 
-              {/* Best route only */}
-              <View style={styles.collapsedCard}>
-                <RouteCard
-                  route={selectedRoute!}
-                  onPress={() => handleSelectRoute(selectedRoute!.id)}
-                  onLongPress={() => handleOpenRouteDetail(selectedRoute!.id)}
-                  isBest={visibleRoutes[0]?.id === selectedRoute?.id}
-                  isSelected
-                />
-              </View>
-
-              {/* Tappable peek hint */}
-              {otherRouteCount > 0 && (
-                <Pressable style={styles.peekHint} onPress={handleExpandSheet}>
-                  <ChevronsUp size={16} color={colors.textMuted} />
-                  <Text style={styles.peekText}>
-                    {otherRouteCount} muuta tulosta
-                  </Text>
-                </Pressable>
+                {/* Tappable peek hint */}
+                {otherRouteCount > 0 && (
+                  <Pressable style={styles.peekHint} onPress={snapToExpanded}>
+                    <ChevronsUp size={16} color={colors.textMuted} />
+                    <Text style={styles.peekText}>
+                      {otherRouteCount} muuta tulosta
+                    </Text>
+                  </Pressable>
+                )}
+              </>
+            )
+          ) : (
+            <View style={styles.emptyContent}>
+              {isSearching && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>Haetaan reittejä...</Text>
+                </View>
               )}
-            </>
-          )
-        ) : (
-          <View style={styles.emptyContent}>
-            {isSearching && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.loadingText}>Haetaan reittejä...</Text>
-              </View>
-            )}
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            {!isSearching && !error && (
-              <Text style={styles.emptyText}>
-                Hae reittiä syöttämällä lähtö- ja kohdeosoite
-              </Text>
-            )}
-          </View>
-        )}
-      </BottomSheet>
+              {error && <Text style={styles.errorText}>{error}</Text>}
+            </View>
+          )}
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -695,14 +747,31 @@ const styles = StyleSheet.create({
   },
 
   // Bottom sheet
-  bottomSheetBg: {
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     backgroundColor: colors.bgWhite,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  handleArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: HANDLE_HEIGHT,
+    paddingVertical: 8,
   },
   handleIndicator: {
     backgroundColor: colors.border,
     width: 40,
+    height: 4,
+    borderRadius: 2,
   },
 
   // Summary row
@@ -759,7 +828,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingTop: 4,
-    paddingBottom: 12,
+    paddingBottom: 0,
     paddingHorizontal: spacing.lg,
   },
   peekText: {
@@ -786,11 +855,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingVertical: spacing.md,
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    textAlign: 'center',
-    paddingVertical: spacing.xl,
   },
 });

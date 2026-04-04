@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Liityntäpysäköinti",
+    "slug": "liityntapysakointi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "liityntapysakointi",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0047b3"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.liityntapysakointi.app",
+      "config": {
+        "googleMapsApiKey": "YOUR_API_KEY"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Sijaintia käytetään reitin suunnitteluun ja navigointiin.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Sijaintia käytetään navigointiin pysäköintipaikalle."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0047b3"
+      },
+      "package": "com.liityntapysakointi.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_API_KEY"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      "expo-font"
+    ]
+  }
+}

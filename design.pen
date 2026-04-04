@@ -966,7 +966,8 @@
                                   "fill": "$text-secondary",
                                   "content": "12 min · 8 km",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "icon_font",
@@ -983,7 +984,8 @@
                                   "fill": "$text-secondary",
                                   "content": "26 min",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -4264,7 +4266,8 @@
                                   "fill": "$text-secondary",
                                   "content": "12 min · 8 km",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "icon_font",
@@ -4281,7 +4284,8 @@
                                   "fill": "$text-secondary",
                                   "content": "26 min",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -4466,7 +4470,8 @@
                                   "fill": "$text-secondary",
                                   "content": "15 min · 10 km",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "icon_font",
@@ -4483,7 +4488,8 @@
                                   "fill": "$text-secondary",
                                   "content": "27 min",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -4645,7 +4651,8 @@
                                   "fill": "$text-secondary",
                                   "content": "18 min · 12 km",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "icon_font",
@@ -4662,7 +4669,8 @@
                                   "fill": "$text-secondary",
                                   "content": "27 min",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -4824,7 +4832,8 @@
                                   "fill": "$text-secondary",
                                   "content": "8 min · 5 km",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "icon_font",
@@ -4841,7 +4850,8 @@
                                   "fill": "$text-secondary",
                                   "content": "40 min",
                                   "fontFamily": "DM Sans",
-                                  "fontSize": 11
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -5269,7 +5279,8 @@
                               "fill": "$text-muted",
                               "content": "Päivittäinen työmatka",
                               "fontFamily": "DM Sans",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -5379,7 +5390,8 @@
                               "fill": "$text-muted",
                               "content": "Haettu 2 h sitten",
                               "fontFamily": "DM Sans",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -5554,7 +5566,8 @@
                           "fill": "$text-secondary",
                           "content": "Itäkatu 1, Helsinki",
                           "fontFamily": "DM Sans",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -5711,7 +5724,8 @@
                           "fill": "$text-secondary",
                           "content": "Rastilantie 6, Helsinki",
                           "fontFamily": "DM Sans",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -5868,7 +5882,8 @@
                           "fill": "$text-secondary",
                           "content": "Linnanrakentajantie 2, Helsinki",
                           "fontFamily": "DM Sans",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -5916,7 +5931,8 @@
               "content": "Lisää suosikki painamalla ♡ reittihaussa tai P pysäköintipaikalla",
               "textAlign": "center",
               "fontFamily": "DM Sans",
-              "fontSize": 11
+              "fontSize": 11,
+              "fontWeight": "normal"
             }
           ]
         },

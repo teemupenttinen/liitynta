@@ -52,6 +52,7 @@ const SPRING_CONFIG = { damping: 50, stiffness: 400, overshootClamping: true };
 export default function MapScreen() {
   const router = useRouter();
   const mapRef = useRef<any>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const { height: screenHeight } = useWindowDimensions();
   const {
     origin,
@@ -99,6 +100,7 @@ export default function MapScreen() {
         setIsExpanded(true);
       } else {
         sheetTranslateY.value = withSpring(collapsedTranslateY, SPRING_CONFIG);
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
         setIsExpanded(false);
       }
     })
@@ -111,6 +113,7 @@ export default function MapScreen() {
 
   const snapToCollapsed = useCallback(() => {
     sheetTranslateY.value = withSpring(collapsedTranslateY, SPRING_CONFIG);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
     setIsExpanded(false);
   }, [collapsedTranslateY, sheetTranslateY]);
 
@@ -357,7 +360,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView ref={mapRef} style={styles.map} initialRegion={INITIAL_REGION}>
+      <MapView ref={mapRef} style={styles.map} initialRegion={INITIAL_REGION} onPress={() => isExpanded && snapToCollapsed()}>
         {/* Route polylines for selected route */}
         {hasSearched &&
           polylines.map((pl) => (
@@ -554,6 +557,7 @@ export default function MapScreen() {
               </Pressable>
 
               <ScrollView
+                ref={scrollRef}
                 style={styles.cardsScroll}
                 contentContainerStyle={styles.cardsContent}
                 showsVerticalScrollIndicator={false}

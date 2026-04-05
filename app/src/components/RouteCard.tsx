@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Car, TrainFront, Bus, Footprints, TramFront, Ship } from 'lucide-react-native';
+import { Car, TrainFront, Bus, Footprints, TramFront, Ship, Heart } from 'lucide-react-native';
 import { colors, spacing, radii } from '@/lib/theme';
+import { useAppStore } from '@/lib/store';
 import type { Route, TransitMode } from '@/types/route';
 
 const MODE_COLORS: Record<TransitMode, string> = {
@@ -41,6 +42,8 @@ interface RouteCardProps {
 }
 
 export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: RouteCardProps) {
+  const { favouriteParkingSpots, addFavouriteParkingSpot, removeFavouriteParkingSpot } = useAppStore();
+  const isFavouriteSpot = favouriteParkingSpots.some((s) => s.facilityId === route.parking.id);
   const hasAvailability = route.parking.availability != null;
   const availColor = !hasAvailability
     ? colors.availNeutral
@@ -117,28 +120,50 @@ export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: R
           )}
         </View>
 
-        {/* Bottom row: badges */}
+        {/* Bottom row: badges + favourite heart */}
         <View style={styles.badgeRow}>
-          {isBest && (
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.badgeText}>NOPEIN</Text>
-            </View>
-          )}
-          {transitLeg && (
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: MODE_COLORS[transitLeg.mode] },
-              ]}
-            >
-              <Text style={styles.badgeText}>
-                {transitLeg.lineName
-                  ? `${transitLeg.lineName} ${MODE_LABELS[transitLeg.mode] ?? ''}`
-                      .trim()
-                  : MODE_LABELS[transitLeg.mode] ?? transitLeg.mode}
-              </Text>
-            </View>
-          )}
+          <View style={styles.badges}>
+            {isBest && (
+              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.badgeText}>NOPEIN</Text>
+              </View>
+            )}
+            {transitLeg && (
+              <View
+                style={[
+                  styles.badge,
+                  { backgroundColor: MODE_COLORS[transitLeg.mode] },
+                ]}
+              >
+                <Text style={styles.badgeText}>
+                  {transitLeg.lineName
+                    ? `${transitLeg.lineName} ${MODE_LABELS[transitLeg.mode] ?? ''}`
+                        .trim()
+                    : MODE_LABELS[transitLeg.mode] ?? transitLeg.mode}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Pressable
+            onPress={() => {
+              if (isFavouriteSpot) {
+                removeFavouriteParkingSpot(route.parking.id);
+              } else {
+                addFavouriteParkingSpot({
+                  id: route.parking.id,
+                  facilityId: route.parking.id,
+                  name: route.parking.name,
+                });
+              }
+            }}
+            hitSlop={8}
+          >
+            <Heart
+              size={16}
+              color={isFavouriteSpot ? colors.availLow : colors.textMuted}
+              fill={isFavouriteSpot ? colors.availLow : 'none'}
+            />
+          </Pressable>
         </View>
       </View>
     </Pressable>
@@ -223,6 +248,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  badges: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
   },
   badge: {
     borderRadius: 5,

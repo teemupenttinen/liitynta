@@ -40,7 +40,7 @@ export const useAppStore = create<AppState>((set) => ({
   commutePairs: [],
   favouriteParkingSpots: [],
   walkingSpeed: 'normal',
-  showOnlyAvailable: false,
+  showOnlyAvailable: true,
 
   setOrigin: (origin) => set({ origin }),
   setDestination: (destination) => set({ destination }),

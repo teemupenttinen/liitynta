@@ -29,6 +29,7 @@ export const colors = {
   availHigh: '#10B981',
   availMedium: '#F59E0B',
   availLow: '#EF4444',
+  availNeutral: '#B0BEC5',
 } as const;
 
 export const fonts = {

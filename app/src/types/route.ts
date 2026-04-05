@@ -7,7 +7,7 @@ export interface ParkingFacility {
   name: string;
   available: number;
   capacity: number;
-  availability: AvailabilityLevel;
+  availability?: AvailabilityLevel;
   latitude: number;
   longitude: number;
   walkToStationMinutes: number;

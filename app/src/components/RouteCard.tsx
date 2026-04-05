@@ -41,8 +41,10 @@ interface RouteCardProps {
 }
 
 export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: RouteCardProps) {
-  const availColor =
-    route.parking.availability === 'high'
+  const hasAvailability = route.parking.availability != null;
+  const availColor = !hasAvailability
+    ? colors.availNeutral
+    : route.parking.availability === 'high'
       ? colors.availHigh
       : route.parking.availability === 'medium'
         ? colors.availMedium
@@ -65,9 +67,15 @@ export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: R
     >
       {/* Availability sidebar */}
       <View style={[styles.availSidebar, { backgroundColor: availColor }]}>
-        <Text style={styles.availCount}>{route.parking.available}</Text>
-        <Text style={styles.availCapacity}>/{route.parking.capacity}</Text>
-        <Text style={styles.availLabel}>vapaana</Text>
+        <Text style={styles.availCount}>
+          {hasAvailability ? route.parking.available : route.parking.capacity}
+        </Text>
+        {hasAvailability && (
+          <Text style={styles.availCapacity}>/{route.parking.capacity}</Text>
+        )}
+        <Text style={styles.availLabel}>
+          {hasAvailability ? 'vapaana' : 'paikkaa'}
+        </Text>
       </View>
 
       {/* Content */}

@@ -61,14 +61,14 @@ export default function SettingsScreen() {
           onPress={() => setShowOnlyAvailable(!showOnlyAvailable)}
         >
           <View style={styles.toggleText}>
-            <Text style={styles.toggleLabel}>Näytä vain vapaat</Text>
+            <Text style={styles.toggleLabel}>Näytä myös täydet</Text>
             <Text style={styles.toggleDesc}>
-              Piilota täydet liityntäpysäköinnit kartalta ja listauksesta
+              Näytä liityntäpysäköinnit joissa ei ole vapaita paikkoja
             </Text>
           </View>
           <Switch
-            value={showOnlyAvailable}
-            onValueChange={setShowOnlyAvailable}
+            value={!showOnlyAvailable}
+            onValueChange={(val) => setShowOnlyAvailable(!val)}
             trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor={colors.bgWhite}
           />

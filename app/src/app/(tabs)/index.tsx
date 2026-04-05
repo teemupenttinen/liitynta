@@ -47,7 +47,7 @@ const MODE_LINE_COLORS: Record<TransitMode, string> = {
 };
 
 const HANDLE_HEIGHT = 24;
-const SPRING_CONFIG = { damping: 20, stiffness: 200 };
+const SPRING_CONFIG = { damping: 50, stiffness: 400, overshootClamping: true };
 
 export default function MapScreen() {
   const router = useRouter();
@@ -75,45 +75,49 @@ export default function MapScreen() {
   const collapsedHeight = 185;
   const expandedHeight = screenHeight - 300; // leave space for search area + status bar
 
-  const sheetHeight = useSharedValue(collapsedHeight);
-  const startHeight = useSharedValue(collapsedHeight);
+  // Animate translateY instead of height so content is always laid out
+  // and the sheet slides up as a unit (no "pop-in" effect).
+  const collapsedTranslateY = expandedHeight - collapsedHeight;
+  const sheetTranslateY = useSharedValue(collapsedTranslateY);
+  const startTranslateY = useSharedValue(collapsedTranslateY);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
-      startHeight.value = sheetHeight.value;
+      startTranslateY.value = sheetTranslateY.value;
     })
     .onUpdate((e) => {
-      const newHeight = startHeight.value - e.translationY;
-      sheetHeight.value = Math.max(
-        collapsedHeight,
-        Math.min(expandedHeight, newHeight),
+      const newY = startTranslateY.value + e.translationY;
+      sheetTranslateY.value = Math.max(
+        0,
+        Math.min(collapsedTranslateY, newY),
       );
     })
     .onEnd((e) => {
-      const mid = (collapsedHeight + expandedHeight) / 2;
-      if (sheetHeight.value > mid || e.velocityY < -500) {
-        sheetHeight.value = withSpring(expandedHeight, SPRING_CONFIG);
+      const mid = collapsedTranslateY / 2;
+      if (sheetTranslateY.value < mid || e.velocityY < -500) {
+        sheetTranslateY.value = withSpring(0, SPRING_CONFIG);
         setIsExpanded(true);
       } else {
-        sheetHeight.value = withSpring(collapsedHeight, SPRING_CONFIG);
+        sheetTranslateY.value = withSpring(collapsedTranslateY, SPRING_CONFIG);
         setIsExpanded(false);
       }
     })
     .runOnJS(true);
 
   const animatedSheetStyle = useAnimatedStyle(() => ({
-    height: sheetHeight.value,
+    height: expandedHeight,
+    transform: [{ translateY: sheetTranslateY.value }],
   }));
 
   const snapToCollapsed = useCallback(() => {
-    sheetHeight.value = withSpring(collapsedHeight, SPRING_CONFIG);
+    sheetTranslateY.value = withSpring(collapsedTranslateY, SPRING_CONFIG);
     setIsExpanded(false);
-  }, [collapsedHeight, sheetHeight]);
+  }, [collapsedTranslateY, sheetTranslateY]);
 
   const snapToExpanded = useCallback(() => {
-    sheetHeight.value = withSpring(expandedHeight, SPRING_CONFIG);
+    sheetTranslateY.value = withSpring(0, SPRING_CONFIG);
     setIsExpanded(true);
-  }, [expandedHeight, sheetHeight]);
+  }, [sheetTranslateY]);
 
   const [originCoords, setOriginCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [destCoords, setDestCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -515,90 +519,59 @@ export default function MapScreen() {
           </GestureDetector>
 
           {hasResults ? (
-            isExpanded ? (
-              /* ── EXPANDED: summary + all cards scrollable ── */
-              <>
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryLeft}>
-                    <Text style={styles.summaryCity}>{origin.split(',')[0]}</Text>
-                    <ArrowRight size={14} color={colors.textMuted} />
-                    <Text style={styles.summaryCity}>{destination.split(',')[0]}</Text>
-                  </View>
-                  <Pressable style={styles.summaryRight} onPress={handleToggleFavourite}>
-                    <Heart
-                      size={16}
-                      color={colors.availLow}
-                      fill={isFavourited ? colors.availLow : 'none'}
-                    />
-                    <Text style={styles.favText}>Suosikki</Text>
-                  </Pressable>
+            <>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryLeft}>
+                  <Text style={styles.summaryCity}>{origin.split(',')[0]}</Text>
+                  <ArrowRight size={14} color={colors.textMuted} />
+                  <Text style={styles.summaryCity}>{destination.split(',')[0]}</Text>
                 </View>
-
-                {/* Collapse button */}
-                <Pressable style={styles.peekHint} onPress={snapToCollapsed}>
-                  <ChevronsDown size={16} color={colors.textMuted} />
-                  <Text style={styles.peekText}>Pienennä</Text>
-                </Pressable>
-
-                <ScrollView
-                  style={styles.cardsScroll}
-                  contentContainerStyle={styles.cardsContent}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {visibleRoutes.map((route, index) => (
-                    <View key={route.id} style={index > 0 ? { marginTop: 10 } : undefined}>
-                      <RouteCard
-                        route={route}
-                        onPress={() => handleSelectRoute(route.id)}
-                        onLongPress={() => handleOpenRouteDetail(route.id)}
-                        isBest={index === 0}
-                        isSelected={route.id === selectedRoute?.id}
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-              </>
-            ) : (
-              /* ── COLLAPSED: summary + best card + peek hint ── */
-              <>
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryLeft}>
-                    <Text style={styles.summaryCity}>{origin.split(',')[0]}</Text>
-                    <ArrowRight size={14} color={colors.textMuted} />
-                    <Text style={styles.summaryCity}>{destination.split(',')[0]}</Text>
-                  </View>
-                  <Pressable style={styles.summaryRight} onPress={handleToggleFavourite}>
-                    <Heart
-                      size={16}
-                      color={colors.availLow}
-                      fill={isFavourited ? colors.availLow : 'none'}
-                    />
-                    <Text style={styles.favText}>Suosikki</Text>
-                  </Pressable>
-                </View>
-
-                {/* Best route only */}
-                <View style={styles.collapsedCard}>
-                  <RouteCard
-                    route={selectedRoute!}
-                    onPress={() => handleSelectRoute(selectedRoute!.id)}
-                    onLongPress={() => handleOpenRouteDetail(selectedRoute!.id)}
-                    isBest={visibleRoutes[0]?.id === selectedRoute?.id}
-                    isSelected
+                <Pressable style={styles.summaryRight} onPress={handleToggleFavourite}>
+                  <Heart
+                    size={16}
+                    color={colors.availLow}
+                    fill={isFavourited ? colors.availLow : 'none'}
                   />
-                </View>
+                  <Text style={styles.favText}>Suosikki</Text>
+                </Pressable>
+              </View>
 
-                {/* Tappable peek hint */}
-                {otherRouteCount > 0 && (
-                  <Pressable style={styles.peekHint} onPress={snapToExpanded}>
+              {/* Toggle hint */}
+              <Pressable style={styles.peekHint} onPress={isExpanded ? snapToCollapsed : snapToExpanded}>
+                {isExpanded ? (
+                  <>
+                    <ChevronsDown size={16} color={colors.textMuted} />
+                    <Text style={styles.peekText}>Pienennä</Text>
+                  </>
+                ) : otherRouteCount > 0 ? (
+                  <>
                     <ChevronsUp size={16} color={colors.textMuted} />
                     <Text style={styles.peekText}>
                       {otherRouteCount} muuta tulosta
                     </Text>
-                  </Pressable>
-                )}
-              </>
-            )
+                  </>
+                ) : null}
+              </Pressable>
+
+              <ScrollView
+                style={styles.cardsScroll}
+                contentContainerStyle={styles.cardsContent}
+                showsVerticalScrollIndicator={false}
+                scrollEnabled={isExpanded}
+              >
+                {visibleRoutes.map((route, index) => (
+                  <View key={route.id} style={index > 0 ? { marginTop: 10 } : undefined}>
+                    <RouteCard
+                      route={route}
+                      onPress={() => handleSelectRoute(route.id)}
+                      onLongPress={() => handleOpenRouteDetail(route.id)}
+                      isBest={index === 0}
+                      isSelected={route.id === selectedRoute?.id}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            </>
           ) : (
             <View style={styles.emptyContent}>
               {isSearching && (
@@ -759,7 +732,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 8,
-    overflow: 'hidden',
   },
   handleArea: {
     alignItems: 'center',

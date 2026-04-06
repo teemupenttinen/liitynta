@@ -107,10 +107,9 @@ function getCentroid(coordinates: number[][][]): { lat: number; lng: number } {
   return { lat: latSum / ring.length, lng: lngSum / ring.length };
 }
 
-function getAvailabilityLevel(available: number, capacity: number): AvailabilityLevel {
-  const ratio = available / capacity;
-  if (ratio >= 0.3) return 'high';
-  if (ratio >= 0.1) return 'medium';
+function getAvailabilityLevel(available: number, _capacity: number): AvailabilityLevel {
+  if (available > 10) return 'high';
+  if (available >= 5) return 'medium';
   return 'low';
 }
 
@@ -295,7 +294,7 @@ async function getTransitRoute(
     plan(
       from: { lat: ${fromLat}, lon: ${fromLon} }
       to: { lat: ${toLat}, lon: ${toLon} }
-      numItineraries: 1
+      numItineraries: 3
       walkSpeed: ${walkSpeed}
       transportModes: [
         { mode: WALK }
@@ -484,13 +483,13 @@ export async function searchRoutes(
 
   const results = await Promise.all(routePromises);
 
-  // 4. Filter: only keep routes with exactly 1 non-walking transit mode (no transfers)
+  // 4. Filter: only keep routes with up to 2 non-walking transit legs (max 1 transfer)
   const validRoutes = results.filter((r): r is Route => {
     if (!r) return false;
     const transitLegs = r.legs.filter(
       (l) => l.mode !== 'drive' && l.mode !== 'park' && l.mode !== 'walk',
     );
-    return transitLegs.length === 1;
+    return transitLegs.length >= 1 && transitLegs.length <= 2;
   });
 
   // 5. Sort by total time with metro bonus (metro routes get 10-min advantage)

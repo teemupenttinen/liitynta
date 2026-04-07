@@ -15,16 +15,16 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { Heart, ChevronsUp, ChevronsDown, ArrowRight } from 'lucide-react-native';
+import { Heart, ChevronsUp, ChevronsDown, ArrowRight, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing, radii } from '@/lib/theme';
 import { useAppStore } from '@/lib/store';
 import { RouteCard } from '@/components/RouteCard';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { MapView, Marker, Polyline } from '@/components/Map';
-import { geocode, searchRoutes, type GeocodeSuggestion } from '@/lib/digitransit';
+import { geocode, searchRoutes, fetchParkAndRideFacilities, type GeocodeSuggestion } from '@/lib/digitransit';
 import * as Location from 'expo-location';
-import type { TransitMode } from '@/types/route';
+import type { TransitMode, AvailabilityLevel } from '@/types/route';
 
 /** Helsinki region default */
 const INITIAL_REGION = {
@@ -68,6 +68,9 @@ export default function MapScreen() {
     addCommutePair,
     commutePairs,
     showOnlyAvailable,
+    favouriteParkingSpots,
+    addFavouriteParkingSpot,
+    removeFavouriteParkingSpot,
   } = useAppStore();
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -128,6 +131,31 @@ export default function MapScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+
+  // All P+R facilities shown by default before any search
+  interface FacilityMarker {
+    id: number;
+    name: string;
+    latitude: number;
+    longitude: number;
+    capacity: number;
+    available?: number;
+    availability: AvailabilityLevel;
+  }
+  const [allFacilities, setAllFacilities] = useState<FacilityMarker[]>([]);
+  const [selectedFacility, setSelectedFacility] = useState<FacilityMarker | null>(null);
+
+  // Load all P+R facilities on mount
+  useEffect(() => {
+    fetchParkAndRideFacilities().then((facilities) => {
+      setAllFacilities(
+        facilities.map((f) => ({
+          ...f,
+          availability: (f.available ?? 0) > 10 ? 'high' as const : (f.available ?? 0) >= 5 ? 'medium' as const : 'low' as const,
+        })),
+      );
+    }).catch(() => {});
+  }, []);
 
   // Filter routes: hide those with 0 available spots when setting is on
   const visibleRoutes = useMemo(() => {
@@ -194,6 +222,36 @@ export default function MapScreen() {
     },
     [],
   );
+
+  const handleClearSearch = useCallback(() => {
+    setRoutes([]);
+    setHasSearched(false);
+    setSelectedRouteId(null);
+    setError(null);
+    setSelectedFacility(null);
+    lastSearchKey.current = '';
+    mapRef.current?.animateToRegion(INITIAL_REGION, 500);
+  }, [setRoutes]);
+
+  const handleClearOrigin = useCallback(() => {
+    setOrigin('');
+    setOriginCoords(null);
+    handleClearSearch();
+  }, [setOrigin, handleClearSearch]);
+
+  const handleClearDestination = useCallback(() => {
+    setDestination('');
+    setDestCoords(null);
+    handleClearSearch();
+  }, [setDestination, handleClearSearch]);
+
+  const handleClearAll = useCallback(() => {
+    setOrigin('');
+    setDestination('');
+    setOriginCoords(null);
+    setDestCoords(null);
+    handleClearSearch();
+  }, [setOrigin, setDestination, handleClearSearch]);
 
   const handleRequestLocation = useCallback(async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -268,6 +326,8 @@ export default function MapScreen() {
       setIsSearching(true);
       setRoutes([]);
     }
+
+    setSelectedFacility(null);
 
     try {
       const foundRoutes = await searchRoutes(
@@ -356,11 +416,17 @@ export default function MapScreen() {
 
   const hasResults = hasSearched && visibleRoutes.length > 0;
   const otherRouteCount = Math.max(0, visibleRoutes.length - 1);
-  const showSheet = hasResults || isSearching || error;
+  const showSheet = hasResults || isSearching || error || selectedFacility;
 
   return (
     <View style={styles.container}>
-      <MapView ref={mapRef} style={styles.map} initialRegion={INITIAL_REGION} onPress={() => isExpanded && snapToCollapsed()}>
+      <MapView ref={mapRef} style={styles.map} initialRegion={INITIAL_REGION} onPress={(e: any) => {
+          if (isExpanded) snapToCollapsed();
+          // Only clear facility if the tap was on the map background, not a marker
+          if (selectedFacility && !hasSearched && e.nativeEvent?.action !== 'marker-press') {
+            setSelectedFacility(null);
+          }
+        }}>
         {/* Route polylines for selected route */}
         {hasSearched &&
           polylines.map((pl) => (
@@ -399,6 +465,89 @@ export default function MapScreen() {
           >
             <View style={styles.destMarker}>
               <View style={styles.destDot} />
+            </View>
+          </Marker>
+        )}
+
+        {/* Default P+R markers — shown before any search */}
+        {!hasSearched &&
+          allFacilities.filter((f) => (f.available ?? 0) > 0).map((f) => (
+            <Marker
+              key={`fac-${f.id}`}
+              coordinate={{ latitude: f.latitude, longitude: f.longitude }}
+              anchor={{ x: 0.5, y: 1 }}
+              tracksViewChanges={false}
+              onPress={() => {
+                setSelectedFacility(f);
+                snapToCollapsed();
+              }}
+              zIndex={1}
+            >
+              <View style={[styles.pinContainer, styles.pinUnselected]}>
+                <View
+                  style={[
+                    styles.pinBg,
+                    { backgroundColor: getAvailColor(f.availability) },
+                  ]}
+                >
+                  <Text style={styles.pinIcon}>P</Text>
+                </View>
+                <View
+                  style={[
+                    styles.pinTriangle,
+                    { borderTopColor: getAvailColor(f.availability) },
+                  ]}
+                />
+                <View style={[styles.pinLabel, { backgroundColor: colors.bgWhite }]}>
+                  <View
+                    style={[
+                      styles.pinLabelDot,
+                      { backgroundColor: getAvailColor(f.availability) },
+                    ]}
+                  />
+                  <Text style={[styles.pinLabelText, { color: colors.textPrimary }]}>
+                    {f.available ?? f.capacity}
+                  </Text>
+                </View>
+              </View>
+            </Marker>
+          ))}
+
+        {/* Selected P+R marker overlay — rendered separately so others stay static */}
+        {!hasSearched && selectedFacility && (
+          <Marker
+            key={`fac-selected-${selectedFacility.id}`}
+            coordinate={{ latitude: selectedFacility.latitude, longitude: selectedFacility.longitude }}
+            anchor={{ x: 0.5, y: 1 }}
+            tracksViewChanges={false}
+            zIndex={10}
+            onPress={() => {
+              setSelectedFacility(null);
+            }}
+          >
+            <View style={styles.pinContainer}>
+              <View
+                style={[
+                  styles.pinBgSelected,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
+                <Text style={styles.pinIcon}>P</Text>
+              </View>
+              <View
+                style={[styles.pinTriangle, { borderTopColor: colors.primary }]}
+              />
+              <View style={[styles.pinLabel, { backgroundColor: colors.primary }]}>
+                <View
+                  style={[
+                    styles.pinLabelDot,
+                    { backgroundColor: getAvailColor(selectedFacility.availability) },
+                  ]}
+                />
+                <Text style={[styles.pinLabelText, { color: colors.textWhite }]}>
+                  {selectedFacility.available ?? selectedFacility.capacity}
+                </Text>
+              </View>
             </View>
           </Marker>
         )}
@@ -489,6 +638,7 @@ export default function MapScreen() {
             variant="origin"
             onSubmitEditing={handleSearch}
             onRequestLocation={handleRequestLocation}
+            onClear={handleClearOrigin}
             focusPoint={userLocation ?? undefined}
           />
         </View>
@@ -500,9 +650,16 @@ export default function MapScreen() {
             placeholder="Määränpää"
             variant="destination"
             onSubmitEditing={handleSearch}
+            onClear={handleClearDestination}
             focusPoint={userLocation ?? undefined}
           />
         </View>
+        {hasSearched && !isExpanded && (
+          <Pressable style={styles.clearPill} onPress={handleClearAll}>
+            <X size={12} color={colors.textSecondary} />
+            <Text style={styles.clearPillText}>Tyhjennä haut</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Bottom Sheet */}
@@ -576,6 +733,46 @@ export default function MapScreen() {
                 ))}
               </ScrollView>
             </>
+          ) : selectedFacility && !isSearching ? (
+            <View style={styles.facilityCard}>
+              <View style={[styles.facilityAvailSidebar, { backgroundColor: getAvailColor(selectedFacility.availability) }]}>
+                <Text style={styles.facilityAvailCount}>
+                  {selectedFacility.available ?? selectedFacility.capacity}
+                </Text>
+                {selectedFacility.available != null && (
+                  <Text style={styles.facilityAvailCapacity}>/{selectedFacility.capacity}</Text>
+                )}
+                <Text style={styles.facilityAvailLabel}>
+                  {selectedFacility.available != null ? 'vapaana' : 'paikkaa'}
+                </Text>
+              </View>
+              <View style={styles.facilityInfo}>
+                <View style={styles.facilityTopRow}>
+                  <Text style={styles.facilityName} numberOfLines={1}>{selectedFacility.name}</Text>
+                  <Pressable
+                    onPress={() => {
+                      const fid = String(selectedFacility.id);
+                      const isFav = favouriteParkingSpots.some((s) => s.facilityId === fid);
+                      if (isFav) {
+                        removeFavouriteParkingSpot(fid);
+                      } else {
+                        addFavouriteParkingSpot({ id: fid, facilityId: fid, name: selectedFacility.name });
+                      }
+                    }}
+                    hitSlop={8}
+                  >
+                    <Heart
+                      size={18}
+                      color={favouriteParkingSpots.some((s) => s.facilityId === String(selectedFacility.id)) ? colors.availLow : colors.textMuted}
+                      fill={favouriteParkingSpots.some((s) => s.facilityId === String(selectedFacility.id)) ? colors.availLow : 'none'}
+                    />
+                  </Pressable>
+                </View>
+                <Text style={styles.facilityCapacity}>
+                  Kapasiteetti: {selectedFacility.capacity} autopaikkaa
+                </Text>
+              </View>
+            </View>
           ) : (
             <View style={styles.emptyContent}>
               {isSearching && (
@@ -605,6 +802,27 @@ const styles = StyleSheet.create({
     right: spacing.lg,
     gap: spacing.sm,
     zIndex: 10,
+  },
+
+  clearPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 4,
+    backgroundColor: colors.bgWhite,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  clearPillText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
 
   // Map markers
@@ -831,5 +1049,87 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingVertical: spacing.md,
+  },
+
+  // Facility card (pre-search)
+  facilityCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.bg,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    marginHorizontal: spacing.lg,
+    marginTop: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  facilityAvailSidebar: {
+    width: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+  },
+  facilityAvailCount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.textWhite,
+  },
+  facilityAvailCapacity: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  facilityAvailLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 0.5,
+  },
+  facilityInfo: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  facilityTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  facilityName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  facilityCapacity: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+
+  // Default small P+R dot (before selection)
+  defaultPin: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bgWhite,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  defaultPinText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textWhite,
   },
 });

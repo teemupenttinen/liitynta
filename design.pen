@@ -110,6 +110,7 @@
               "width": 370,
               "layout": "vertical",
               "gap": 8,
+              "alignItems": "center",
               "children": [
                 {
                   "type": "frame",
@@ -150,11 +151,23 @@
                       "type": "text",
                       "id": "SZwZz",
                       "name": "ot",
-                      "fill": "$text-muted",
-                      "content": "Lähtöpaikka",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Espoo, Otaniemi",
                       "fontFamily": "DM Sans",
                       "fontSize": 15,
-                      "fontWeight": "normal"
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "qv2qH",
+                      "name": "clearOrigin",
+                      "width": 18,
+                      "height": 18,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
                     }
                   ]
                 },
@@ -197,11 +210,69 @@
                       "type": "text",
                       "id": "eiXhy",
                       "name": "dt",
-                      "fill": "$text-muted",
-                      "content": "Määränpää",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Helsinki keskusta",
                       "fontFamily": "DM Sans",
                       "fontSize": 15,
-                      "fontWeight": "normal"
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "rx9Y3",
+                      "name": "clearDest",
+                      "width": 18,
+                      "height": 18,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oO8Xu",
+                  "name": "Clear Search Button",
+                  "fill": "#FFFFFFDD",
+                  "cornerRadius": 16,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#0000000A",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 6
+                  },
+                  "gap": 6,
+                  "padding": [
+                    4,
+                    12
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "Z4r2O",
+                      "name": "clearIcon",
+                      "width": 14,
+                      "height": 14,
+                      "iconFontName": "circle-x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-secondary"
+                    },
+                    {
+                      "type": "text",
+                      "id": "rLDqi",
+                      "name": "clearText",
+                      "fill": "$text-secondary",
+                      "content": "Tyhjennä haku",
+                      "fontFamily": "DM Sans",
+                      "fontSize": 12,
+                      "fontWeight": "500"
                     }
                   ]
                 }
@@ -3658,11 +3729,21 @@
                       "type": "text",
                       "id": "3InPN",
                       "name": "ot",
-                      "fill": "$text-muted",
-                      "content": "Lähtöpaikka",
+                      "fill": "$text-primary",
+                      "content": "Espoo, Otaniemi",
                       "fontFamily": "DM Sans",
                       "fontSize": 15,
-                      "fontWeight": "normal"
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "KrL7r",
+                      "name": "xIcon1",
+                      "width": 18,
+                      "height": 18,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
                     }
                   ]
                 },
@@ -3705,11 +3786,56 @@
                       "type": "text",
                       "id": "6NExN",
                       "name": "dt",
-                      "fill": "$text-muted",
-                      "content": "Määränpää",
+                      "fill": "$text-primary",
+                      "content": "Helsinki keskusta",
                       "fontFamily": "DM Sans",
                       "fontSize": 15,
-                      "fontWeight": "normal"
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "cfd02",
+                      "name": "xIcon2",
+                      "width": 18,
+                      "height": 18,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hEuxC",
+                  "name": "clearRow",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "padding": [
+                    6,
+                    0
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "TQ9jP",
+                      "name": "clearIcon",
+                      "width": 14,
+                      "height": 14,
+                      "iconFontName": "circle-x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
+                    },
+                    {
+                      "type": "text",
+                      "id": "fsiS6",
+                      "name": "clearText",
+                      "fill": "$text-muted",
+                      "content": "Tyhjennä haku",
+                      "fontFamily": "DM Sans",
+                      "fontSize": 12,
+                      "fontWeight": "500"
                     }
                   ]
                 }

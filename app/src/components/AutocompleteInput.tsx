@@ -8,7 +8,7 @@ import {
   FlatList,
   Keyboard,
 } from 'react-native';
-import { CircleDot, MapPin, LocateFixed } from 'lucide-react-native';
+import { CircleDot, MapPin, LocateFixed, X } from 'lucide-react-native';
 import { colors, spacing, radii } from '@/lib/theme';
 import { autocomplete, type GeocodeSuggestion } from '@/lib/digitransit';
 
@@ -20,6 +20,7 @@ interface AutocompleteInputProps {
   variant: 'origin' | 'destination';
   onSubmitEditing?: () => void;
   onRequestLocation?: () => void;
+  onClear?: () => void;
   focusPoint?: { lat: number; lon: number };
 }
 
@@ -31,6 +32,7 @@ export function AutocompleteInput({
   variant,
   onSubmitEditing,
   onRequestLocation,
+  onClear,
   focusPoint,
 }: AutocompleteInputProps) {
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
@@ -74,6 +76,14 @@ export function AutocompleteInput({
     [onChangeText, onSelect],
   );
 
+  const handleClear = useCallback(() => {
+    selectedRef.current = false;
+    onChangeText('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    onClear?.();
+  }, [onChangeText, onClear]);
+
   const handleFocus = useCallback(() => {
     if (suggestions.length > 0 && !selectedRef.current) {
       setShowSuggestions(true);
@@ -109,11 +119,15 @@ export function AutocompleteInput({
           onSubmitEditing={onSubmitEditing}
           returnKeyType="search"
         />
-        {variant === 'origin' && onRequestLocation && (
+        {value.length > 0 ? (
+          <Pressable onPress={handleClear} hitSlop={8}>
+            <X size={18} color={colors.textMuted} />
+          </Pressable>
+        ) : variant === 'origin' && onRequestLocation ? (
           <Pressable onPress={onRequestLocation} hitSlop={8}>
             <LocateFixed size={20} color={colors.textMuted} />
           </Pressable>
-        )}
+        ) : null}
       </View>
       {showSuggestions && (
         <View style={styles.dropdown}>

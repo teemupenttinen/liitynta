@@ -1,5 +1,15 @@
 import { create } from 'zustand';
-import type { Route, CommutePair, FavouriteParkingSpot } from '@/types/route';
+import type { Route, CommutePair, FavouriteParkingSpot, AvailabilityLevel } from '@/types/route';
+
+export interface Facility {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  capacity: number;
+  available?: number;
+  availability: AvailabilityLevel;
+}
 
 interface AppState {
   // Search
@@ -8,6 +18,10 @@ interface AppState {
   routes: Route[];
   selectedRoute: Route | null;
   isSearching: boolean;
+
+  // Facilities (shared across screens)
+  facilities: Facility[];
+  setFacilities: (facilities: Facility[]) => void;
 
   // Favourites
   commutePairs: CommutePair[];
@@ -37,6 +51,8 @@ export const useAppStore = create<AppState>((set) => ({
   routes: [],
   selectedRoute: null,
   isSearching: false,
+  facilities: [],
+  setFacilities: (facilities) => set({ facilities }),
   commutePairs: [],
   favouriteParkingSpots: [],
   walkingSpeed: 'normal',

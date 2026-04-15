@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Car, TrainFront, Bus, Footprints, TramFront, Ship, Heart } from 'lucide-react-native';
+import { Car, TrainFront, Bus, Footprints, TramFront, Ship, Heart, Route as RouteIcon, ChevronRight } from 'lucide-react-native';
 import { colors, spacing, radii } from '@/lib/theme';
 import { useAppStore } from '@/lib/store';
 import type { Route, TransitMode } from '@/types/route';
@@ -37,11 +37,12 @@ interface RouteCardProps {
   route: Route;
   onPress: () => void;
   onLongPress?: () => void;
-  isBest?: boolean;
+  onAction?: () => void;
+  actionLabel?: string;
   isSelected?: boolean;
 }
 
-export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: RouteCardProps) {
+export function RouteCard({ route, onPress, onLongPress, onAction, actionLabel = 'Näytä reitti', isSelected }: RouteCardProps) {
   const { favouriteParkingSpots, addFavouriteParkingSpot, removeFavouriteParkingSpot } = useAppStore();
   const isFavouriteSpot = favouriteParkingSpots.some((s) => s.facilityId === route.parking.id);
   const hasAvailability = route.parking.availability != null;
@@ -81,70 +82,57 @@ export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: R
         </Text>
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Top row: facility name + total time */}
-        <View style={styles.topRow}>
-          <Text style={styles.facilityName} numberOfLines={1}>
-            {route.parking.name}
-          </Text>
+      {/* Right content */}
+      <View style={styles.rightContent}>
+        {/* Info row */}
+        <View style={styles.infoRow}>
+          <View style={styles.nameCol}>
+            <Text style={styles.facilityName} numberOfLines={1}>
+              {route.parking.name}
+            </Text>
+            <View style={styles.modesRow}>
+              {driveLeg && (
+                <>
+                  <Car size={11} color={colors.textSecondary} />
+                  <Text style={styles.modeText}>{driveLeg.durationMinutes} min</Text>
+                </>
+              )}
+              {transitLeg && (
+                <>
+                  {MODE_ICONS[transitLeg.mode] &&
+                    (() => {
+                      const Icon = MODE_ICONS[transitLeg.mode]!;
+                      return <Icon size={11} color={MODE_COLORS[transitLeg.mode]} />;
+                    })()}
+                  <Text style={styles.modeText}>{transitLeg.durationMinutes} min</Text>
+                </>
+              )}
+            </View>
+          </View>
+          {transitLeg && (
+            <View style={[styles.transitBadge, { backgroundColor: MODE_COLORS[transitLeg.mode] }]}>
+              <Text style={styles.transitBadgeText}>
+                {transitLeg.lineName
+                  ? `${transitLeg.lineName} ${MODE_LABELS[transitLeg.mode] ?? ''}`.trim()
+                  : MODE_LABELS[transitLeg.mode] ?? transitLeg.mode}
+              </Text>
+            </View>
+          )}
           <Text style={styles.totalTime}>{route.totalMinutes} min</Text>
         </View>
 
-        {/* Middle row: mode icons with durations */}
-        <View style={styles.modesRow}>
-          {driveLeg && (
-            <>
-              <Car size={12} color={colors.textSecondary} />
-              <Text style={styles.modeText}>
-                {driveLeg.durationMinutes} min · {driveLeg.distanceKm} km
-              </Text>
-            </>
-          )}
-          {transitLeg && (
-            <>
-              {MODE_ICONS[transitLeg.mode] &&
-                (() => {
-                  const Icon = MODE_ICONS[transitLeg.mode]!;
-                  return (
-                    <Icon
-                      size={12}
-                      color={MODE_COLORS[transitLeg.mode]}
-                    />
-                  );
-                })()}
-              <Text style={styles.modeText}>
-                {transitLeg.durationMinutes} min
-              </Text>
-            </>
-          )}
-        </View>
+        {/* Divider */}
+        <View style={styles.divider} />
 
-        {/* Bottom row: badges + favourite heart */}
-        <View style={styles.badgeRow}>
-          <View style={styles.badges}>
-            {isBest && (
-              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.badgeText}>NOPEIN</Text>
-              </View>
-            )}
-            {transitLeg && (
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: MODE_COLORS[transitLeg.mode] },
-                ]}
-              >
-                <Text style={styles.badgeText}>
-                  {transitLeg.lineName
-                    ? `${transitLeg.lineName} ${MODE_LABELS[transitLeg.mode] ?? ''}`
-                        .trim()
-                    : MODE_LABELS[transitLeg.mode] ?? transitLeg.mode}
-                </Text>
-              </View>
-            )}
-          </View>
+        {/* Action bar */}
+        <View style={styles.actionBar}>
+          <Pressable style={styles.routeBtn} onPress={onAction ?? onPress}>
+            <RouteIcon size={13} color={colors.primary} />
+            <Text style={styles.routeBtnText}>{actionLabel}</Text>
+            <ChevronRight size={13} color={colors.primary} />
+          </Pressable>
           <Pressable
+            style={[styles.favBtn, isFavouriteSpot && styles.favBtnActive]}
             onPress={() => {
               if (isFavouriteSpot) {
                 removeFavouriteParkingSpot(route.parking.id);
@@ -159,7 +147,7 @@ export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: R
             hitSlop={8}
           >
             <Heart
-              size={16}
+              size={14}
               color={isFavouriteSpot ? colors.availLow : colors.textMuted}
               fill={isFavouriteSpot ? colors.availLow : 'none'}
             />
@@ -173,11 +161,11 @@ export function RouteCard({ route, onPress, onLongPress, isBest, isSelected }: R
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: colors.bg,
+    backgroundColor: '#F5F7FA',
     borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: colors.borderLight,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   cardSelected: {
     borderColor: colors.primary,
@@ -188,80 +176,107 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   availSidebar: {
-    width: 72,
+    width: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+    gap: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   availCount: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: colors.textWhite,
   },
   availCapacity: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.8)',
   },
   availLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.8)',
     letterSpacing: 0.5,
   },
-  content: {
+  rightContent: {
     flex: 1,
-    padding: 10,
-    paddingLeft: 12,
-    gap: 6,
   },
-  topRow: {
+  infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 10,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  nameCol: {
+    flex: 1,
+    gap: 2,
   },
   facilityName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
-    flex: 1,
-  },
-  totalTime: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.primary,
-    marginLeft: 8,
   },
   modesRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   modeText: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textSecondary,
-    marginLeft: -8,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  badges: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-  },
-  badge: {
+  transitBadge: {
     borderRadius: 5,
     paddingVertical: 2,
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
   },
-  badgeText: {
-    fontSize: 9,
+  transitBadgeText: {
+    fontSize: 8,
     fontWeight: '600',
     color: colors.textWhite,
+  },
+  totalTime: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+  },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    paddingVertical: 6,
+  },
+  routeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    height: 28,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 7,
+  },
+  routeBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  favBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 7,
+  },
+  favBtnActive: {
+    backgroundColor: '#FEE2E2',
   },
 });

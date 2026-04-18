@@ -53,6 +53,7 @@ class _MapScreenState extends State<MapScreen>
   String? error;
   bool hasSearched = false;
   String? selectedRouteId;
+  String? promotedRouteId;
   Facility? selectedFacility;
   String _lastSearchKey = '';
 
@@ -89,10 +90,17 @@ class _MapScreenState extends State<MapScreen>
 
   void _snapCollapsed() {
     _sheetCtrl.animateTo(0, curve: Curves.easeOutCubic);
-    if (_cardsScrollCtrl.hasClients) {
-      _cardsScrollCtrl.jumpTo(0);
-    }
-    setState(() => _isExpanded = false);
+    setState(() {
+      _isExpanded = false;
+      if (selectedRouteId != null) {
+        promotedRouteId = selectedRouteId;
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_cardsScrollCtrl.hasClients) {
+        _cardsScrollCtrl.jumpTo(0);
+      }
+    });
   }
 
   Future<void> _loadFacilities() async {
@@ -123,8 +131,15 @@ class _MapScreenState extends State<MapScreen>
 
   List<AppRoute> get visibleRoutes {
     final state = context.read<AppState>();
-    if (!state.showOnlyAvailable) return state.routes;
-    return state.routes.where((r) => r.parking.available > 0).toList();
+    final base = state.showOnlyAvailable
+        ? state.routes.where((r) => r.parking.available > 0).toList()
+        : List<AppRoute>.from(state.routes);
+    if (promotedRouteId == null) return base;
+    final idx = base.indexWhere((r) => r.id == promotedRouteId);
+    if (idx <= 0) return base;
+    final promoted = base.removeAt(idx);
+    base.insert(0, promoted);
+    return base;
   }
 
   AppRoute? get selectedRoute {
@@ -184,6 +199,7 @@ class _MapScreenState extends State<MapScreen>
     setState(() {
       hasSearched = false;
       selectedRouteId = null;
+      promotedRouteId = null;
       error = null;
       selectedFacility = null;
       _lastSearchKey = '';
@@ -255,6 +271,7 @@ class _MapScreenState extends State<MapScreen>
       setState(() {
         hasSearched = true;
         selectedRouteId = found.isNotEmpty ? found.first.id : null;
+        promotedRouteId = null;
       });
       if (found.isNotEmpty) {
         final points = <LatLng>[
@@ -352,7 +369,17 @@ class _MapScreenState extends State<MapScreen>
           height: 72,
           alignment: Alignment.topCenter,
           child: GestureDetector(
-            onTap: () => setState(() => selectedRouteId = r.id),
+            onTap: () {
+              setState(() {
+                selectedRouteId = r.id;
+                promotedRouteId = r.id;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_cardsScrollCtrl.hasClients) {
+                  _cardsScrollCtrl.jumpTo(0);
+                }
+              });
+            },
             child: _ParkingPin(
               count: r.parking.available,
               availColor: _availColor(r.parking.availability ?? AvailabilityLevel.low),

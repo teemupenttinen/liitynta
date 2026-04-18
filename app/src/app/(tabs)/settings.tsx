@@ -1,17 +1,27 @@
-import { View, Text, StyleSheet, Pressable, Switch } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Footprints, ParkingSquare } from 'lucide-react-native';
-import { colors, spacing, radii } from '@/lib/theme';
-import { useAppStore } from '@/lib/store';
+import { View, Text, StyleSheet, Pressable, Switch } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Footprints, ParkingSquare } from "lucide-react-native";
+import { colors, spacing, radii } from "@/lib/theme";
+import { useAppStore } from "@/lib/store";
 
 const SPEED_OPTIONS = [
-  { key: 'slow' as const, label: 'Hidas', description: '3,5 km/h', icon: '🚶' },
-  { key: 'normal' as const, label: 'Normaali', description: '5 km/h', icon: '🚶‍♂️' },
-  { key: 'fast' as const, label: 'Nopea', description: '6,5 km/h', icon: '🏃' },
+  { key: "slow" as const, label: "Hidas", description: "3,5 km/h", icon: "🚶" },
+  {
+    key: "normal" as const,
+    label: "Normaali",
+    description: "5 km/h",
+    icon: "🚶‍♂️",
+  },
+  { key: "fast" as const, label: "Nopea", description: "6,5 km/h", icon: "🏃" },
 ];
 
 export default function SettingsScreen() {
-  const { walkingSpeed, setWalkingSpeed, showOnlyAvailable, setShowOnlyAvailable } = useAppStore();
+  const {
+    walkingSpeed,
+    setWalkingSpeed,
+    showOnlyAvailable,
+    setShowOnlyAvailable,
+  } = useAppStore();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,37 +91,37 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: { padding: spacing.xl, paddingTop: spacing.lg },
-  title: { fontSize: 28, fontWeight: '700', color: colors.textPrimary },
+  title: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
   section: { paddingHorizontal: spacing.xl },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
-  options: { flexDirection: 'row', gap: spacing.md },
+  sectionTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary },
+  options: { flexDirection: "row", gap: spacing.md },
   optionCard: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.bgWhite,
     borderRadius: radii.lg,
     padding: spacing.xl,
     gap: spacing.sm,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   optionCardActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
   },
   optionIcon: { fontSize: 28 },
-  optionLabel: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  optionLabel: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
   optionLabelActive: { color: colors.primary },
   optionDesc: { fontSize: 13, color: colors.textSecondary },
   toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.bgWhite,
     borderRadius: radii.lg,
     padding: spacing.lg,
@@ -123,7 +133,7 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   toggleDesc: {

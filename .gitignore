@@ -39,3 +39,16 @@ android/
 
 # npm/yarn
 *.log
+
+# Flutter
+flutter/build/
+flutter/.dart_tool/
+flutter/.packages
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/.pub-cache/
+flutter/.pub/
+flutter/pubspec.lock
+flutter/**/*.g.dart
+flutter/**/*.freezed.dart
+*.iml

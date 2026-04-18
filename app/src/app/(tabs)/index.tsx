@@ -503,10 +503,10 @@ export default function MapScreen() {
             </Marker>
           ))}
 
-        {/* Selected P+R marker overlay — stable key so React reuses the component */}
+        {/* Selected P+R marker overlay — unique key forces fresh bitmap capture on each selection */}
         {!hasSearched && selectedFacility && (
           <Marker
-            key="fac-selected"
+            key={`fac-selected-${selectedFacility.id}`}
             coordinate={{ latitude: selectedFacility.latitude, longitude: selectedFacility.longitude }}
             anchor={{ x: 0.5, y: 1 }}
             tracksViewChanges={true}

@@ -77,6 +77,9 @@ class RouteCard extends StatelessWidget {
               l?.mode != TransitMode.walk,
           orElse: () => null,
         );
+    final walkMinutes = route.legs
+        .where((l) => l.mode == TransitMode.walk)
+        .fold<int>(0, (sum, l) => sum + l.durationMinutes);
 
     return GestureDetector(
       onTap: onTap,
@@ -189,6 +192,18 @@ class RouteCard extends StatelessWidget {
                                         ),
                                       const SizedBox(width: 4),
                                       Text('${transitLeg.durationMinutes} min',
+                                          style: const TextStyle(
+                                              fontSize: 10,
+                                              color:
+                                                  AppColors.textSecondary)),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    if (walkMinutes > 0) ...[
+                                      const Icon(LucideIcons.footprints,
+                                          size: 11,
+                                          color: AppColors.walkGray),
+                                      const SizedBox(width: 4),
+                                      Text('$walkMinutes min',
                                           style: const TextStyle(
                                               fontSize: 10,
                                               color:

@@ -1,5 +1,5 @@
 {
-  "version": "2.10",
+  "version": "2.11",
   "children": [
     {
       "type": "frame",
@@ -5735,7 +5735,7 @@
                       "type": "text",
                       "id": "su2Qc",
                       "fill": "$text-primary",
-                      "content": "Liityntäpysäköinti",
+                      "content": "Liityntaparkki",
                       "fontFamily": "DM Sans",
                       "fontSize": 16,
                       "fontWeight": "700"

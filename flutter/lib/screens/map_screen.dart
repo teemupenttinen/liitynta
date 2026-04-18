@@ -244,6 +244,12 @@ class _MapScreenState extends State<MapScreen>
       final found = await searchRoutes(
         oLat!, oLon!, dLat!, dLon!,
         walkingSpeed: state.walkingSpeed.key,
+        originLabel: state.origin.trim().isEmpty
+            ? 'Lähtöpaikka'
+            : state.origin.trim(),
+        destinationLabel: state.destination.trim().isEmpty
+            ? 'Määränpää'
+            : state.destination.trim(),
       );
       state.setRoutes(found);
       setState(() {
@@ -676,6 +682,7 @@ class _MapScreenState extends State<MapScreen>
                     InteractiveFlag.scrollWheelZoom,
               ),
               onTap: (_, __) {
+                FocusScope.of(context).unfocus();
                 if (selectedFacility != null && !hasSearched) {
                   setState(() => selectedFacility = null);
                 }
@@ -738,7 +745,7 @@ class _MapScreenState extends State<MapScreen>
                   },
                   focusPoint: userLocation,
                 ),
-                if (hasSearched) ...[
+                if (hasSearched && !_isExpanded) ...[
                   const SizedBox(height: AppSpacing.sm),
                   GestureDetector(
                     onTap: () {

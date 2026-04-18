@@ -347,6 +347,8 @@ Future<List<AppRoute>> searchRoutes(
   double destLat,
   double destLon, {
   String walkingSpeed = 'normal',
+  String originLabel = 'Lähtöpaikka',
+  String destinationLabel = 'Määränpää',
 }) async {
   final allFacilities = await fetchParkAndRideFacilities();
   final originDestDist = _haversine(originLat, originLon, destLat, destLon);
@@ -395,10 +397,10 @@ Future<List<AppRoute>> searchRoutes(
       walkToStationMinutes: walkToStationMinutes,
     );
 
-    final legs = <RouteLeg>[
+    final rawLegs = <RouteLeg>[
       RouteLeg(
         mode: TransitMode.drive,
-        from: 'Lähtöpaikka',
+        from: originLabel,
         to: f.name,
         durationMinutes: driving.durationMinutes,
         distanceKm: driving.distanceKm,
@@ -422,6 +424,35 @@ Future<List<AppRoute>> searchRoutes(
             geometry: t.geometry,
           )),
     ];
+
+    String normalizeEndpoint(String s) {
+      if (s == 'Origin') return originLabel;
+      if (s == 'Destination') return destinationLabel;
+      return s;
+    }
+
+    final legs = <RouteLeg>[];
+    for (int i = 0; i < rawLegs.length; i++) {
+      final l = rawLegs[i];
+      if (l.mode == TransitMode.walk) {
+        final from = i > 0 ? rawLegs[i - 1].to : l.from;
+        final to =
+            i < rawLegs.length - 1 ? rawLegs[i + 1].from : l.to;
+        legs.add(RouteLeg(
+          mode: l.mode,
+          from: normalizeEndpoint(from),
+          to: normalizeEndpoint(to),
+          durationMinutes: l.durationMinutes,
+          distanceKm: l.distanceKm,
+          lineName: l.lineName,
+          lineDescription: l.lineDescription,
+          parking: l.parking,
+          geometry: l.geometry,
+        ));
+      } else {
+        legs.add(l);
+      }
+    }
 
     return AppRoute(
       id: 'route-${f.id}',

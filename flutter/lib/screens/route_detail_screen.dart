@@ -74,22 +74,12 @@ class RouteDetailScreen extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${route?.legs.isNotEmpty == true ? route!.legs[0].from : 'Espoo'} → ${route?.parking.name ?? 'P+R'}',
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text('Espoo → Helsinki keskusta',
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary)),
-                      ],
+                    child: Text(
+                      '${state.origin.trim().isEmpty ? 'Lähtöpaikka' : state.origin} → ${state.destination.trim().isEmpty ? 'Määränpää' : state.destination}',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary),
                     ),
                   ),
                   Column(
@@ -125,78 +115,68 @@ class RouteDetailScreen extends StatelessWidget {
                     final idx = e.key;
                     final leg = e.value;
                     final cfg = _modeConfig[leg.mode]!;
-                    final isLast = idx == (route?.legs.length ?? 0) - 1;
-                    final active = navState ==
-                            nav.NavigationState.driveToParking &&
-                        leg.mode == TransitMode.drive;
-                    return Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: active ? AppSpacing.sm : 0,
-                        vertical: AppSpacing.lg,
-                      ),
-                      decoration: active
-                          ? BoxDecoration(
-                              color: AppColors.primaryLight,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadii.md),
-                            )
-                          : null,
-                      child: IntrinsicHeight(
-                        child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    final prevCfg = idx > 0
+                        ? _modeConfig[route!.legs[idx - 1].mode]
+                        : null;
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           SizedBox(
                             width: 32,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Align(
-                                  alignment: Alignment.center,
-                                  child: leg.mode == TransitMode.park
+                                SizedBox(
+                                  height: AppSpacing.lg,
+                                  child: prevCfg != null
                                       ? Container(
-                                          width: 22,
-                                          height: 22,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.bgWhite,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                                color: AppColors.primary,
-                                                width: 3),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: const Text('P',
-                                              style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppColors.primary)),
-                                        )
-                                      : Container(
-                                          width: 14,
-                                          height: 14,
-                                          decoration: BoxDecoration(
-                                              color: cfg.color,
-                                              shape: BoxShape.circle),
-                                        ),
+                                          width: 3, color: prevCfg.color)
+                                      : null,
                                 ),
-                                if (!isLast)
-                                  Expanded(
-                                    child: Align(
-                                      alignment: Alignment.topCenter,
-                                      child: Container(
-                                        width: 3,
-                                        margin: const EdgeInsets.only(top: 4),
-                                        color: cfg.color,
+                                leg.mode == TransitMode.park
+                                    ? Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.bgWhite,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: AppColors.primary,
+                                              width: 3),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: const Text('P',
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.primary)),
+                                      )
+                                    : Container(
+                                        width: 14,
+                                        height: 14,
+                                        decoration: BoxDecoration(
+                                            color: cfg.color,
+                                            shape: BoxShape.circle),
                                       ),
-                                    ),
+                                Expanded(
+                                  child: Container(
+                                    width: 3,
+                                    color: cfg.color,
                                   ),
+                                ),
                               ],
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.lg),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
                                 if (leg.mode == TransitMode.park) ...[
                                   Text('Pysäköinti – ${leg.parking?.name}',
                                       style: const TextStyle(
@@ -282,40 +262,62 @@ class RouteDetailScreen extends StatelessWidget {
                                   ),
                                 ],
                               ],
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      ),
                     );
                   }),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.lg),
+                  IntrinsicHeight(
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                         SizedBox(
                           width: 32,
-                          child: Icon(LucideIcons.mapPin,
-                              size: 20, color: AppColors.primary),
-                        ),
-                        SizedBox(width: AppSpacing.md),
-                        Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text('Määränpää',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textMuted)),
-                              Text('Helsinki keskusta',
-                                  style: TextStyle(
+                              SizedBox(
+                                height: AppSpacing.lg,
+                                child: (route?.legs.isNotEmpty ?? false)
+                                    ? Container(
+                                        width: 3,
+                                        color: _modeConfig[
+                                                route!.legs.last.mode]!
+                                            .color,
+                                      )
+                                    : null,
+                              ),
+                              const Icon(LucideIcons.mapPin,
+                                  size: 20, color: AppColors.primary),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: AppSpacing.lg),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Määränpää',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textMuted)),
+                                Text(
+                                  state.destination.trim().isEmpty
+                                      ? 'Määränpää'
+                                      : state.destination,
+                                  style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary)),
-                            ],
+                                      color: AppColors.textPrimary),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],

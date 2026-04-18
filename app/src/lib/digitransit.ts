@@ -122,7 +122,7 @@ export async function fetchParkAndRideFacilities(): Promise<RawFacility[]> {
     fetch(FINTRAFFIC_UTILIZATIONS_URL),
   ]);
 
-  if (!facilitiesRes.ok) throw new Error('Liityntäpysäköintien haku epäonnistui');
+  if (!facilitiesRes.ok) throw new Error('Liityntaparkkien haku epäonnistui');
 
   const data = await facilitiesRes.json();
 

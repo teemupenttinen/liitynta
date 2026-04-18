@@ -1,6 +1,6 @@
 {
-    "name": "liityntapysakointi",
-    "short_name": "liityntapysakointi",
+    "name": "liityntaparkki",
+    "short_name": "liityntaparkki",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

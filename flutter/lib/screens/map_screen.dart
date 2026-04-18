@@ -157,9 +157,15 @@ class _MapScreenState extends State<MapScreen>
       final placemarks = await gc.placemarkFromCoordinates(loc.latitude, loc.longitude);
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
-        final label = [p.street, p.subThoroughfare, p.locality]
-            .where((s) => s != null && s.isNotEmpty)
-            .join(' ');
+        final streetBase = (p.thoroughfare ?? p.street ?? '')
+            .replaceAll(RegExp(r'\s+\d+\S*$'), '')
+            .trim();
+        final number = p.subThoroughfare?.trim() ?? '';
+        final streetWithNumber =
+            [streetBase, number].where((s) => s.isNotEmpty).join(' ');
+        final label = [streetWithNumber, p.locality ?? '']
+            .where((s) => s.isNotEmpty)
+            .join(', ');
         context
             .read<AppState>()
             .setOrigin(label.isEmpty ? 'Oma sijainti' : label);
@@ -659,6 +665,16 @@ class _MapScreenState extends State<MapScreen>
             options: MapOptions(
               initialCenter: _initialCenter,
               initialZoom: _initialZoom,
+              interactionOptions: const InteractionOptions(
+                enableMultiFingerGestureRace: true,
+                flags: InteractiveFlag.doubleTapDragZoom |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.drag |
+                    InteractiveFlag.flingAnimation |
+                    InteractiveFlag.pinchZoom |
+                    InteractiveFlag.rotate |
+                    InteractiveFlag.scrollWheelZoom,
+              ),
               onTap: (_, __) {
                 if (selectedFacility != null && !hasSearched) {
                   setState(() => selectedFacility = null);
@@ -670,7 +686,7 @@ class _MapScreenState extends State<MapScreen>
                 urlTemplate:
                     'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'com.liityntapysakointi.app',
+                userAgentPackageName: 'com.liityntaparkki.app',
                 maxNativeZoom: 19,
                 retinaMode: MediaQuery.of(context).devicePixelRatio > 1.0,
               ),

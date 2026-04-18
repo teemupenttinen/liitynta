@@ -1,4 +1,4 @@
-# Liityntäpysäköinti – Flutter port
+# Liityntaparkki – Flutter port
 
 1:1 Flutter port of the Expo React Native app in `../app`. Helps Finnish commuters find park-and-ride (P+R) facilities with Digitransit routing and Fintraffic real-time parking utilization.
 
@@ -45,7 +45,7 @@ flutter pub get
 Flutter's native project files (`android/`, `ios/`) are not checked in. Run:
 
 ```bash
-flutter create --org com.liityntapysakointi --project-name liityntapysakointi .
+flutter create --org com.liityntaparkki --project-name liityntaparkki .
 ```
 
 from this directory to generate them on first setup, then apply the API key + permission edits above.

@@ -20,7 +20,7 @@ class LiityntaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Liityntäpysäköinti',
+      title: 'Liityntaparkki',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       initialRoute: '/',

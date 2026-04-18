@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Liityntäpysäköinti",
-    "slug": "liityntapysakointi",
+    "name": "Liityntaparkki",
+    "slug": "liityntaparkki",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "liityntapysakointi",
+    "scheme": "liityntaparkki",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.liityntapysakointi.app",
+      "bundleIdentifier": "com.liityntaparkki.app",
       "config": {
         "googleMapsApiKey": "YOUR_API_KEY"
       },
@@ -26,7 +26,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#0047b3"
       },
-      "package": "com.liityntapysakointi.app",
+      "package": "com.liityntaparkki.app",
       "config": {
         "googleMaps": {
           "apiKey": "YOUR_API_KEY"

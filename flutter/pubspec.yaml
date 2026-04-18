@@ -1,4 +1,4 @@
-name: liityntapysakointi
+name: liityntaparkki
 description: Park & Ride commuter app for Finland (Flutter port).
 publish_to: 'none'
 version: 1.0.0+1

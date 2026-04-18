@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.liityntapysakointi" "\0"
-            VALUE "FileDescription", "liityntapysakointi" "\0"
+            VALUE "CompanyName", "com.liityntaparkki" "\0"
+            VALUE "FileDescription", "liityntaparkki" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "liityntapysakointi" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.liityntapysakointi. All rights reserved." "\0"
-            VALUE "OriginalFilename", "liityntapysakointi.exe" "\0"
-            VALUE "ProductName", "liityntapysakointi" "\0"
+            VALUE "InternalName", "liityntaparkki" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.liityntaparkki. All rights reserved." "\0"
+            VALUE "OriginalFilename", "liityntaparkki.exe" "\0"
+            VALUE "ProductName", "liityntaparkki" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

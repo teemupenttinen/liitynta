@@ -261,9 +261,10 @@ export default function MapScreen() {
       longitude: coords.lon,
     });
     if (address) {
-      const label = [address.street, address.streetNumber, address.city]
-        .filter(Boolean)
-        .join(' ');
+      const streetBase = (address.street ?? '').replace(/\s+\d+\S*$/, '').trim();
+      const number = address.streetNumber?.trim() ?? '';
+      const streetWithNumber = [streetBase, number].filter(Boolean).join(' ');
+      const label = [streetWithNumber, address.city].filter(Boolean).join(', ');
       setOrigin(label || 'Oma sijainti');
     } else {
       setOrigin('Oma sijainti');

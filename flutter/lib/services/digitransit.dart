@@ -3,13 +3,16 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import '../models/route.dart';
 
-const _routingUrl = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
-const _geocodingUrl = 'https://api.digitransit.fi/geocoding/v1';
-const _facilitiesUrl = 'https://parking.fintraffic.fi/api/v1/facilities.json';
-const _utilizationsUrl = 'https://parking.fintraffic.fi/api/v1/utilizations.json';
+const _proxyBase = String.fromEnvironment(
+  'PROXY_URL',
+  defaultValue: 'http://localhost:8787',
+);
+const _appToken = String.fromEnvironment('APP_TOKEN', defaultValue: '');
 
-// Set via --dart-define=DIGITRANSIT_API_KEY=...
-const _apiKey = String.fromEnvironment('DIGITRANSIT_API_KEY', defaultValue: '');
+const _routingUrl = '$_proxyBase/routing';
+const _geocodingUrl = '$_proxyBase/geocoding/v1';
+const _facilitiesUrl = '$_proxyBase/facilities';
+const _utilizationsUrl = '$_proxyBase/utilizations';
 
 const Map<String, double> _walkSpeeds = {
   'slow': 0.97,
@@ -25,25 +28,27 @@ class GeocodeSuggestion {
 }
 
 Map<String, String> _authHeaders([Map<String, String>? extra]) => {
-      'digitransit-subscription-key': _apiKey,
+      'X-App-Token': _appToken,
       if (extra != null) ...extra,
     };
+
+// Fallback focus point used when the user's GPS location is unavailable
+const _helsinkiCenter = (lat: 60.1699, lon: 24.9384);
 
 Future<List<GeocodeSuggestion>> autocomplete(
   String text, {
   ({double lat, double lon})? focusPoint,
 }) async {
   if (text.length < 2) return [];
+  final focus = focusPoint ?? _helsinkiCenter;
   final params = <String, String>{
     'text': text,
     'size': '5',
-    'boundary.country': 'FIN',
     'lang': 'fi',
+    'boundary.country': 'FIN',
+    'focus.point.lat': focus.lat.toString(),
+    'focus.point.lon': focus.lon.toString(),
   };
-  if (focusPoint != null) {
-    params['focus.point.lat'] = focusPoint.lat.toString();
-    params['focus.point.lon'] = focusPoint.lon.toString();
-  }
   final uri = Uri.parse('$_geocodingUrl/autocomplete').replace(queryParameters: params);
   final res = await http.get(uri, headers: _authHeaders());
   if (res.statusCode != 200) return [];
@@ -119,8 +124,8 @@ AvailabilityLevel availabilityLevel(int available, int _capacity) {
 
 Future<List<RawFacility>> fetchParkAndRideFacilities() async {
   final results = await Future.wait([
-    http.get(Uri.parse(_facilitiesUrl)),
-    http.get(Uri.parse(_utilizationsUrl)),
+    http.get(Uri.parse(_facilitiesUrl), headers: _authHeaders()),
+    http.get(Uri.parse(_utilizationsUrl), headers: _authHeaders()),
   ]);
   final facilitiesRes = results[0];
   final utilizationsRes = results[1];

@@ -6,9 +6,12 @@ import 'widgets/main_tabs.dart';
 import 'screens/route_detail_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  final state = AppState();
+  state.load();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState(),
+    ChangeNotifierProvider.value(
+      value: state,
       child: const LiityntaApp(),
     ),
   );

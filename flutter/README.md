@@ -9,11 +9,13 @@ cd flutter
 flutter pub get
 ```
 
-### Required API keys
+### Required configuration
 
-1. **Digitransit API key** — pass at build/run time:
+1. **Proxy** — the app talks to Digitransit and Fintraffic through the Cloudflare Worker in [`../proxy`](../proxy). See the root [README](../README.md) for how to run it locally. Pass the proxy URL and app token to Flutter at build/run time:
    ```
-   flutter run --dart-define=DIGITRANSIT_API_KEY=<your-key>
+   flutter run \
+     --dart-define=PROXY_URL=http://localhost:8787 \
+     --dart-define=APP_TOKEN=localdev
    ```
 
 2. **Google Maps API key** — add to the native projects:
@@ -81,4 +83,4 @@ flutter/
 - **Maps**: uses `google_maps_flutter`. P+R markers use `BitmapDescriptor.defaultMarkerWithHue` mapped to availability color — visually simpler than the custom pin/label widgets in RN (Flutter requires baking a bitmap to reproduce those exactly).
 - **Bottom sheet**: `DraggableScrollableSheet` replaces the hand-rolled reanimated pan gesture. Snap points are equivalent (collapsed/expanded).
 - **Navigation CTA**: `navigateTo` / `navigateTransit` / `getNavigationState` ported 1:1.
-- **Persistence**: none yet, matching the RN app (MMKV is installed there but not wired up either).
+- **Persistence**: favourites (commute pairs, parking spots) and settings (walking speed, availability toggle) are persisted via `shared_preferences`.

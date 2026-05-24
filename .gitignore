@@ -24,6 +24,10 @@ android/
 # Environment
 .env
 .env.*
+proxy/.dev.vars
+
+# Wrangler local state
+.wrangler/
 
 # macOS
 .DS_Store

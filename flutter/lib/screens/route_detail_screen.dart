@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/route.dart';
@@ -33,14 +35,60 @@ const _modeConfig = <TransitMode, _ModeConfig>{
       'Kävely', LucideIcons.footprints),
 };
 
-class RouteDetailScreen extends StatelessWidget {
+class RouteDetailScreen extends StatefulWidget {
   const RouteDetailScreen({super.key});
+
+  @override
+  State<RouteDetailScreen> createState() => _RouteDetailScreenState();
+}
+
+class _RouteDetailScreenState extends State<RouteDetailScreen> {
+  nav.NavigationState _navState = nav.NavigationState.driveToParking;
+  StreamSubscription<Position>? _positionSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToLocation();
+  }
+
+  Future<void> _subscribeToLocation() async {
+    final state = context.read<AppState>();
+    final route = state.selectedRoute;
+    final dLat = state.destLatitude;
+    final dLon = state.destLongitude;
+    if (route == null || dLat == null || dLon == null) return;
+
+    LocationPermission perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied ||
+        perm == LocationPermission.deniedForever) return;
+
+    _positionSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        distanceFilter: 50,
+      ),
+    ).listen((pos) {
+      final computed = nav.getNavigationState(
+        pos.latitude, pos.longitude,
+        route.parking.latitude, route.parking.longitude,
+        dLat, dLon,
+      );
+      if (mounted) setState(() => _navState = computed);
+    });
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final route = state.selectedRoute;
-    const navState = nav.NavigationState.driveToParking;
+    final navState = _navState;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -339,7 +387,7 @@ class RouteDetailScreen extends StatelessWidget {
                   Text(
                     navState == nav.NavigationState.driveToParking
                         ? 'Aja ${route?.parking.name ?? 'Itäkeskus P+R'} -parkkiin'
-                        : 'Olet lähellä kohdetta',
+                        : 'Olet pysäköintipaikalla',
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -359,7 +407,13 @@ class RouteDetailScreen extends StatelessWidget {
                       ),
                       onPressed: () {
                         final p = route?.parking;
-                        if (p != null) {
+                        final dLat = state.destLatitude;
+                        final dLon = state.destLongitude;
+                        if (navState == nav.NavigationState.navigateToDestination &&
+                            p != null && dLat != null && dLon != null) {
+                          nav.navigateTransit(
+                              p.latitude, p.longitude, dLat, dLon);
+                        } else if (p != null) {
                           nav.navigateTo(p.latitude, p.longitude,
                               label: p.name);
                         } else {
@@ -376,7 +430,7 @@ class RouteDetailScreen extends StatelessWidget {
                           Text(
                             navState == nav.NavigationState.driveToParking
                                 ? 'Aja parkkiin'
-                                : 'Navigoi kohteeseen',
+                                : 'Navigoi määränpäähän',
                             style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,

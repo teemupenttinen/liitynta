@@ -47,7 +47,7 @@ class FavouritesScreen extends StatelessWidget {
                       Icon(LucideIcons.navigation,
                           size: 18, color: AppColors.primary),
                       SizedBox(width: AppSpacing.sm),
-                      Text('Työmatkat',
+                      Text('Reitit',
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -58,7 +58,7 @@ class FavouritesScreen extends StatelessWidget {
                   if (state.commutePairs.isEmpty)
                     _EmptyCard(
                       icon: LucideIcons.heart,
-                      text: 'Tallenna reittihaku suosikiksi nähdäksesi työmatkasi täällä',
+                      text: 'Tallenna reittihaku suosikiksi nähdäksesi reittisi täällä',
                     )
                   else
                     ...state.commutePairs.map((p) => Container(
@@ -127,7 +127,7 @@ class FavouritesScreen extends StatelessWidget {
                       Icon(LucideIcons.mapPin,
                           size: 18, color: AppColors.primary),
                       SizedBox(width: AppSpacing.sm),
-                      Text('Pysäköintipaikat',
+                      Text('Liityntäpysäköinnit',
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -139,7 +139,7 @@ class FavouritesScreen extends StatelessWidget {
                     _EmptyCard(
                       icon: LucideIcons.mapPin,
                       text:
-                          'Tallenna pysäköintipaikka suosikiksi seurataksesi vapaita paikkoja',
+                          'Tallenna liityntäpysäköinti suosikiksi seurataksesi vapaita paikkoja',
                     )
                   else
                     ...state.favouriteParkingSpots.map((spot) {

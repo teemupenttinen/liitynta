@@ -22,12 +22,21 @@ class AppState extends ChangeNotifier {
   List<CommutePair> commutePairs = [];
   List<FavouriteParkingSpot> favouriteParkingSpots = [];
 
+  // Search coordinates
+  double? destLatitude;
+  double? destLongitude;
+
   // Settings
   WalkingSpeed walkingSpeed = WalkingSpeed.normal;
   bool showOnlyAvailable = true;
 
   void setOrigin(String v) { origin = v; notifyListeners(); }
   void setDestination(String v) { destination = v; notifyListeners(); }
+  void setDestCoords(double? lat, double? lon) {
+    destLatitude = lat;
+    destLongitude = lon;
+    notifyListeners();
+  }
   void setRoutes(List<AppRoute> r) { routes = r; notifyListeners(); }
   void selectRoute(AppRoute? r) { selectedRoute = r; notifyListeners(); }
   void setIsSearching(bool v) { isSearching = v; notifyListeners(); }

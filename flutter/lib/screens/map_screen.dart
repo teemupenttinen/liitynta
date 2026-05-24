@@ -237,6 +237,7 @@ class _MapScreenState extends State<MapScreen>
           dLat = results[1][0].lat;
           dLon = results[1][0].lon;
           setState(() => destCoords = (lat: dLat!, lon: dLon!));
+          state.setDestCoords(dLat, dLon);
         }
         if (oLat == null || dLat == null) {
           setState(() => error = 'Osoitetta ei löytynyt. Tarkista hakusanat.');
@@ -252,6 +253,7 @@ class _MapScreenState extends State<MapScreen>
       setState(() => error = null);
       state.setIsSearching(true);
       state.setRoutes([]);
+      state.setDestCoords(dLat, dLon);
     }
 
     setState(() => selectedFacility = null);
@@ -361,14 +363,20 @@ class _MapScreenState extends State<MapScreen>
     } else {
       final vr = visibleRoutes;
       final sel = selectedRoute;
-      for (final r in vr) {
+      final ordered = [
+        ...vr.where((r) => r.id != sel?.id),
+        ...vr.where((r) => r.id == sel?.id),
+      ];
+      for (final r in ordered) {
         final isSel = r.id == sel?.id;
         markers.add(Marker(
+          key: ValueKey('pin-${r.id}-${isSel ? 'sel' : 'un'}'),
           point: LatLng(r.parking.latitude, r.parking.longitude),
           width: 60,
           height: 72,
           alignment: Alignment.topCenter,
           child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               setState(() {
                 selectedRouteId = r.id;

@@ -11,6 +11,7 @@ import '../services/digitransit.dart';
 import '../services/navigation.dart' as nav;
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../utils/time_format.dart';
 import '../widgets/autocomplete_input.dart';
 import '../widgets/route_card.dart';
 
@@ -54,7 +55,7 @@ class _MapScreenState extends State<MapScreen>
   bool hasSearched = false;
   String? selectedRouteId;
   String? promotedRouteId;
-  Facility? selectedFacility;
+  ParkingFacility? selectedFacility;
   String _lastSearchKey = '';
 
   // Sheet animation: 0.0 = collapsed, 1.0 = expanded
@@ -62,6 +63,9 @@ class _MapScreenState extends State<MapScreen>
   bool _isExpanded = false;
   double _dragStartValue = 0;
   final ScrollController _cardsScrollCtrl = ScrollController();
+
+  late AppState _appState;
+  int _lastSeenSearchNonce = 0;
 
   static const double _collapsedHeight = 185;
 
@@ -73,11 +77,26 @@ class _MapScreenState extends State<MapScreen>
       duration: const Duration(milliseconds: 260),
       value: 0,
     );
-    _loadFacilities();
+    _appState = context.read<AppState>();
+    _lastSeenSearchNonce = _appState.searchRequestNonce;
+    _appState.addListener(_handleAppStateChange);
+  }
+
+  void _handleAppStateChange() {
+    if (_appState.searchRequestNonce != _lastSeenSearchNonce) {
+      _lastSeenSearchNonce = _appState.searchRequestNonce;
+      setState(() {
+        originCoords = null;
+        destCoords = null;
+        _lastSearchKey = '';
+      });
+      _handleSearch();
+    }
   }
 
   @override
   void dispose() {
+    _appState.removeListener(_handleAppStateChange);
     _sheetCtrl.dispose();
     _cardsScrollCtrl.dispose();
     super.dispose();
@@ -103,36 +122,34 @@ class _MapScreenState extends State<MapScreen>
     });
   }
 
-  Future<void> _loadFacilities() async {
-    try {
-      final raw = await fetchParkAndRideFacilities();
-      final facs = raw.map((f) {
-        final avail = f.available ?? 0;
-        final lvl = avail > 10
-            ? AvailabilityLevel.high
-            : avail >= 5
-                ? AvailabilityLevel.medium
-                : AvailabilityLevel.low;
-        return Facility(
-          id: f.id,
-          name: f.name,
-          latitude: f.latitude,
-          longitude: f.longitude,
-          capacity: f.capacity,
-          available: f.available,
-          availability: lvl,
-        );
-      }).toList();
-      if (mounted) {
-        context.read<AppState>().setFacilities(facs);
-      }
-    } catch (_) {}
+  void _showLocationDeniedDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sijaintilupa estetty'),
+        content: const Text(
+            'Sijaintia tarvitaan reitin suunnitteluun. Salli sijainnin käyttö asetuksista.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Peruuta'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Geolocator.openAppSettings();
+            },
+            child: const Text('Avaa asetukset'),
+          ),
+        ],
+      ),
+    );
   }
 
   List<AppRoute> get visibleRoutes {
     final state = context.read<AppState>();
     final base = state.showOnlyAvailable
-        ? state.routes.where((r) => r.parking.available > 0).toList()
+        ? state.routes.where((r) => (r.parking.available ?? 0) > 0).toList()
         : List<AppRoute>.from(state.routes);
     if (promotedRouteId == null) return base;
     final idx = base.indexWhere((r) => r.id == promotedRouteId);
@@ -155,8 +172,15 @@ class _MapScreenState extends State<MapScreen>
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
     }
-    if (perm == LocationPermission.denied ||
-        perm == LocationPermission.deniedForever) {
+    if (perm == LocationPermission.deniedForever) {
+      if (mounted) _showLocationDeniedDialog();
+      return;
+    }
+    if (perm == LocationPermission.denied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Sijaintilupa hylätty. Voit sallia sen myöhemmin.')));
+      }
       return;
     }
     final loc = await Geolocator.getCurrentPosition(
@@ -389,8 +413,8 @@ class _MapScreenState extends State<MapScreen>
               });
             },
             child: _ParkingPin(
-              count: r.parking.available,
-              availColor: _availColor(r.parking.availability ?? AvailabilityLevel.low),
+              count: r.parking.available ?? r.parking.capacity,
+              availColor: _availColor(r.parking.availability),
               selected: isSel,
               faded: !isSel,
             ),
@@ -728,7 +752,7 @@ class _MapScreenState extends State<MapScreen>
                 urlTemplate:
                     'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'com.liityntaparkki.app',
+                userAgentPackageName: 'com.liityntaparkki.liityntaparkki',
                 maxNativeZoom: 19,
                 retinaMode: MediaQuery.of(context).devicePixelRatio > 1.0,
               ),
@@ -780,6 +804,64 @@ class _MapScreenState extends State<MapScreen>
                   },
                   focusPoint: userLocation,
                 ),
+                if (state.facilitiesError != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgWhite,
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                      border:
+                          Border.all(color: AppColors.availLow, width: 1),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          offset: Offset(0, 2),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.alertTriangle,
+                            size: 18, color: AppColors.availLow),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            state.facilitiesError!,
+                            style: const TextStyle(
+                                fontSize: 13, color: AppColors.textPrimary),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: state.facilitiesLoading
+                              ? null
+                              : state.loadFacilities,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: state.facilitiesLoading
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary),
+                                )
+                              : const Text('Yritä uudelleen',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (hasSearched && !_isExpanded) ...[
                   const SizedBox(height: AppSpacing.sm),
                   GestureDetector(
@@ -932,7 +1014,7 @@ class _ParkingPin extends StatelessWidget {
 }
 
 class _FacilitySheet extends StatelessWidget {
-  final Facility facility;
+  final ParkingFacility facility;
   final VoidCallback onClose;
   const _FacilitySheet({required this.facility, required this.onClose});
 
@@ -940,7 +1022,7 @@ class _FacilitySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final isFav = state.favouriteParkingSpots
-        .any((s) => s.facilityId == facility.id.toString());
+        .any((s) => s.facilityId == facility.id);
     final color = _availColor(facility.availability);
     return Container(
       decoration: const BoxDecoration(
@@ -1020,16 +1102,30 @@ class _FacilitySheet extends StatelessWidget {
                       child: Column(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 8),
-                            child: Text(facility.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary)),
+                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(facility.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  formatUpdatedAgo(state.facilitiesUpdatedAt),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(height: 4),
                           Container(
                               height: 1, color: AppColors.borderLight),
                           Padding(
@@ -1073,7 +1169,7 @@ class _FacilitySheet extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 GestureDetector(
                                   onTap: () {
-                                    final fid = facility.id.toString();
+                                    final fid = facility.id;
                                     if (isFav) {
                                       state.removeFavouriteParkingSpot(fid);
                                     } else {

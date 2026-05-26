@@ -5,6 +5,7 @@ import '../models/route.dart';
 import '../services/navigation.dart' as nav;
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../utils/time_format.dart';
 
 class FavouritesScreen extends StatelessWidget {
   const FavouritesScreen({super.key});
@@ -18,7 +19,7 @@ class FavouritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final facilityMap = {for (final f in state.facilities) f.id.toString(): f};
+    final facilityMap = {for (final f in state.facilities) f.id: f};
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -61,55 +62,73 @@ class FavouritesScreen extends StatelessWidget {
                       text: 'Tallenna reittihaku suosikiksi nähdäksesi reittisi täällä',
                     )
                   else
-                    ...state.commutePairs.map((p) => Container(
-                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          decoration: BoxDecoration(
+                    ...state.commutePairs.map((p) => Padding(
+                          padding:
+                              const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: Material(
                             color: AppColors.bgWhite,
                             borderRadius: BorderRadius.circular(AppRadii.md),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x0D000000),
-                                offset: Offset(0, 1),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(p.origin,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w500,
-                                              color:
-                                                  AppColors.textPrimary)),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text('→',
-                                        style: TextStyle(
-                                            fontSize: 15,
-                                            color: AppColors.textMuted)),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(p.destination,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w500,
-                                              color:
-                                                  AppColors.textPrimary)),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () =>
+                                  state.requestSearchFromFavourite(p),
+                              onLongPress: () =>
+                                  state.removeCommutePair(p.id),
+                              child: Container(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                decoration: const BoxDecoration(
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0x0D000000),
+                                      offset: Offset(0, 1),
+                                      blurRadius: 4,
                                     ),
                                   ],
                                 ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(p.origin,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight:
+                                                        FontWeight.w500,
+                                                    color: AppColors
+                                                        .textPrimary)),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Text('→',
+                                              style: TextStyle(
+                                                  fontSize: 15,
+                                                  color:
+                                                      AppColors.textMuted)),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(p.destination,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight:
+                                                        FontWeight.w500,
+                                                    color: AppColors
+                                                        .textPrimary)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(LucideIcons.chevronRight,
+                                        size: 20,
+                                        color: AppColors.textMuted),
+                                  ],
+                                ),
                               ),
-                              const Icon(LucideIcons.chevronRight,
-                                  size: 20, color: AppColors.textMuted),
-                            ],
+                            ),
                           ),
                         )),
                 ],
@@ -123,15 +142,25 @@ class FavouritesScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(LucideIcons.mapPin,
+                    children: [
+                      const Icon(LucideIcons.mapPin,
                           size: 18, color: AppColors.primary),
-                      SizedBox(width: AppSpacing.sm),
-                      Text('Liityntäpysäköinnit',
+                      const SizedBox(width: AppSpacing.sm),
+                      const Text('Liityntäpysäköinnit',
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textPrimary)),
+                      const Spacer(),
+                      if (state.favouriteParkingSpots.isNotEmpty)
+                        Text(
+                          formatUpdatedAgo(state.facilitiesUpdatedAt),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),

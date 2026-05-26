@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/route.dart';
+import '../services/digitransit.dart';
 
 enum WalkingSpeed { slow, normal, fast }
 
@@ -13,6 +15,7 @@ const _kCommutePairs = 'commute_pairs';
 const _kFavParkingSpots = 'favourite_parking_spots';
 const _kWalkingSpeed = 'walking_speed';
 const _kShowOnlyAvailable = 'show_only_available';
+const _kOpenOnFavourites = 'open_on_favourites';
 
 class AppState extends ChangeNotifier {
   // Search
@@ -23,7 +26,12 @@ class AppState extends ChangeNotifier {
   bool isSearching = false;
 
   // Facilities cache
-  List<Facility> facilities = [];
+  List<ParkingFacility> facilities = [];
+  DateTime? facilitiesUpdatedAt;
+  bool facilitiesLoading = false;
+  String? facilitiesError;
+  Timer? _facilitiesPollTimer;
+  static const _facilitiesPollInterval = Duration(minutes: 2);
 
   // Favourites
   List<CommutePair> commutePairs = [];
@@ -36,6 +44,12 @@ class AppState extends ChangeNotifier {
   // Settings
   WalkingSpeed walkingSpeed = WalkingSpeed.normal;
   bool showOnlyAvailable = true;
+  bool openOnFavourites = false;
+
+  // Navigation
+  int activeTabIndex = 0;
+  int _searchRequestNonce = 0;
+  int get searchRequestNonce => _searchRequestNonce;
 
   SharedPreferences? _prefs;
 
@@ -78,7 +92,61 @@ class AppState extends ChangeNotifier {
     final showAvail = _prefs!.getBool(_kShowOnlyAvailable);
     if (showAvail != null) showOnlyAvailable = showAvail;
 
+    final openFav = _prefs!.getBool(_kOpenOnFavourites);
+    if (openFav != null) openOnFavourites = openFav;
+    activeTabIndex = openOnFavourites ? 1 : 0;
+
     notifyListeners();
+    startFacilitiesPolling();
+  }
+
+  void startFacilitiesPolling() {
+    if (_facilitiesPollTimer != null) return;
+    loadFacilities();
+    _facilitiesPollTimer = Timer.periodic(
+      _facilitiesPollInterval,
+      (_) => loadFacilities(),
+    );
+  }
+
+  Future<void> loadFacilities() async {
+    if (facilitiesLoading) return;
+    facilitiesLoading = true;
+    facilitiesError = null;
+    notifyListeners();
+    try {
+      final raw = await fetchParkAndRideFacilities();
+      final facs = raw.map((f) {
+        final avail = f.available ?? 0;
+        final lvl = avail > 10
+            ? AvailabilityLevel.high
+            : avail >= 5
+                ? AvailabilityLevel.medium
+                : AvailabilityLevel.low;
+        return ParkingFacility(
+          id: f.id.toString(),
+          name: f.name,
+          latitude: f.latitude,
+          longitude: f.longitude,
+          capacity: f.capacity,
+          available: f.available,
+          availability: lvl,
+        );
+      }).toList();
+      facilities = facs;
+      facilitiesUpdatedAt = DateTime.now();
+    } catch (_) {
+      facilitiesError = 'Parkkipaikkojen lataus epäonnistui. Tarkista yhteys.';
+    } finally {
+      facilitiesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _facilitiesPollTimer?.cancel();
+    super.dispose();
   }
 
   void _persistCommutePairs() {
@@ -116,7 +184,6 @@ class AppState extends ChangeNotifier {
   void setRoutes(List<AppRoute> r) { routes = r; notifyListeners(); }
   void selectRoute(AppRoute? r) { selectedRoute = r; notifyListeners(); }
   void setIsSearching(bool v) { isSearching = v; notifyListeners(); }
-  void setFacilities(List<Facility> f) { facilities = f; notifyListeners(); }
 
   void addCommutePair(CommutePair p) {
     commutePairs = [...commutePairs, p];
@@ -152,6 +219,30 @@ class AppState extends ChangeNotifier {
   void setShowOnlyAvailable(bool v) {
     showOnlyAvailable = v;
     _prefs?.setBool(_kShowOnlyAvailable, v);
+    notifyListeners();
+  }
+
+  void setOpenOnFavourites(bool v) {
+    openOnFavourites = v;
+    _prefs?.setBool(_kOpenOnFavourites, v);
+    notifyListeners();
+  }
+
+  void setActiveTab(int i) {
+    activeTabIndex = i;
+    notifyListeners();
+  }
+
+  /// Populate origin + destination from a saved favourite and signal MapScreen
+  /// to run a search. Switches the active tab to the map.
+  void requestSearchFromFavourite(CommutePair p) {
+    origin = p.origin;
+    destination = p.destination;
+    destLatitude = null;
+    destLongitude = null;
+    routes = [];
+    activeTabIndex = 0;
+    _searchRequestNonce++;
     notifyListeners();
   }
 }

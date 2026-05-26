@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "414575422909",
+    "project_id": "liityntaparkki-a9d46",
+    "storage_bucket": "liityntaparkki-a9d46.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:414575422909:android:ae20e802fd354fb8e8b6d4",
+        "android_client_info": {
+          "package_name": "com.liityntaparkki.liityntaparkki"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEfP78uzrIo1y_cc9GHjqlT01m6P22Ius"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:414575422909:android:c2da6a90382060a5e8b6d4",
+        "android_client_info": {
+          "package_name": "com.liityntapysakointi.liityntapysakointi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEfP78uzrIo1y_cc9GHjqlT01m6P22Ius"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,7 @@
 export interface Env {
   DIGITRANSIT_API_KEY: string;
   APP_TOKEN: string; // set in Worker secrets, checked against X-App-Token header
+  RATE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
 }
 
 // Upstream base URLs
@@ -29,6 +30,17 @@ export default {
     // Validate app token
     if (request.headers.get('X-App-Token') !== env.APP_TOKEN) {
       return new Response('Unauthorized', { status: 401 });
+    }
+
+    // Per-IP rate limit
+    const clientIp =
+      request.headers.get('CF-Connecting-IP') ?? 'unknown';
+    const { success } = await env.RATE_LIMITER.limit({ key: clientIp });
+    if (!success) {
+      return new Response('Too many requests', {
+        status: 429,
+        headers: { 'Retry-After': '60' },
+      });
     }
 
     const url = new URL(request.url);

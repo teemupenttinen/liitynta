@@ -3,11 +3,8 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import '../models/route.dart';
 
-const _proxyBase = String.fromEnvironment(
-  'PROXY_URL',
-  defaultValue: 'http://localhost:8787',
-);
-const _appToken = String.fromEnvironment('APP_TOKEN', defaultValue: '');
+const _proxyBase = String.fromEnvironment('PROXY_URL');
+const _appToken = String.fromEnvironment('APP_TOKEN');
 
 const _routingUrl = '$_proxyBase/routing';
 const _geocodingUrl = '$_proxyBase/geocoding/v1';
@@ -32,6 +29,37 @@ Map<String, String> _authHeaders([Map<String, String>? extra]) => {
       if (extra != null) ...extra,
     };
 
+const _httpTimeout = Duration(seconds: 10);
+const _maxRetries = 2;
+
+Future<http.Response> _httpGet(Uri uri, {Map<String, String>? headers}) =>
+    _withRetry(() => http.get(uri, headers: headers));
+
+Future<http.Response> _httpPost(Uri uri,
+        {Map<String, String>? headers, Object? body}) =>
+    _withRetry(() => http.post(uri, headers: headers, body: body));
+
+Future<http.Response> _withRetry(Future<http.Response> Function() send) async {
+  Object? lastError;
+  for (int i = 0; i <= _maxRetries; i++) {
+    try {
+      final res = await send().timeout(_httpTimeout);
+      // Retry on 5xx; return 4xx as-is so callers can react to them
+      if (res.statusCode >= 500 && i < _maxRetries) {
+        await Future.delayed(Duration(milliseconds: 300 * (1 << i)));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      lastError = e;
+      if (i < _maxRetries) {
+        await Future.delayed(Duration(milliseconds: 300 * (1 << i)));
+      }
+    }
+  }
+  throw lastError ?? Exception('HTTP request failed');
+}
+
 // Fallback focus point used when the user's GPS location is unavailable
 const _helsinkiCenter = (lat: 60.1699, lon: 24.9384);
 
@@ -50,7 +78,7 @@ Future<List<GeocodeSuggestion>> autocomplete(
     'focus.point.lon': focus.lon.toString(),
   };
   final uri = Uri.parse('$_geocodingUrl/autocomplete').replace(queryParameters: params);
-  final res = await http.get(uri, headers: _authHeaders());
+  final res = await _httpGet(uri, headers: _authHeaders());
   if (res.statusCode != 200) return [];
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   final features = (data['features'] as List?) ?? [];
@@ -73,7 +101,7 @@ Future<List<GeocodeSuggestion>> geocode(String query) async {
     'lang': 'fi',
   };
   final uri = Uri.parse('$_geocodingUrl/search').replace(queryParameters: params);
-  final res = await http.get(uri, headers: _authHeaders());
+  final res = await _httpGet(uri, headers: _authHeaders());
   if (res.statusCode != 200) return [];
   final data = jsonDecode(res.body) as Map<String, dynamic>;
   final features = (data['features'] as List?) ?? [];
@@ -124,8 +152,8 @@ AvailabilityLevel availabilityLevel(int available, int _capacity) {
 
 Future<List<RawFacility>> fetchParkAndRideFacilities() async {
   final results = await Future.wait([
-    http.get(Uri.parse(_facilitiesUrl), headers: _authHeaders()),
-    http.get(Uri.parse(_utilizationsUrl), headers: _authHeaders()),
+    _httpGet(Uri.parse(_facilitiesUrl), headers: _authHeaders()),
+    _httpGet(Uri.parse(_utilizationsUrl), headers: _authHeaders()),
   ]);
   final facilitiesRes = results[0];
   final utilizationsRes = results[1];
@@ -195,7 +223,7 @@ List<List<double>> decodePolyline(String encoded) {
 }
 
 Future<Map<String, dynamic>?> _queryDigitransit(String graphql) async {
-  final res = await http.post(
+  final res = await _httpPost(
     Uri.parse(_routingUrl),
     headers: _authHeaders({'Content-Type': 'application/json'}),
     body: jsonEncode({'query': graphql}),
@@ -394,7 +422,7 @@ Future<List<AppRoute>> searchRoutes(
     final parking = ParkingFacility(
       id: f.id.toString(),
       name: f.name,
-      available: f.available ?? 0,
+      available: f.available,
       capacity: f.capacity,
       availability: availabilityLevel(f.available ?? 0, f.capacity),
       latitude: f.latitude,

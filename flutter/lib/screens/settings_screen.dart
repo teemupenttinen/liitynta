@@ -126,6 +126,98 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.xxl),
+                  Row(
+                    children: const [
+                      Icon(LucideIcons.heart,
+                          size: 18, color: AppColors.primary),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('Aloitusnäkymä',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  InkWell(
+                    onTap: () =>
+                        state.setOpenOnFavourites(!state.openOnFavourites),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgWhite,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                      ),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Avaa suosikit oletuksena',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Sovellus avautuu suoraan suosikit-välilehteen',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: state.openOnFavourites,
+                            onChanged: state.setOpenOnFavourites,
+                            activeColor: AppColors.bgWhite,
+                            activeTrackColor: AppColors.primary,
+                            inactiveTrackColor: AppColors.border,
+                            inactiveThumbColor: AppColors.bgWhite,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+                  Row(
+                    children: const [
+                      Icon(Icons.info_outline,
+                          size: 18, color: AppColors.primary),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('Tietoa liityntäpysäköinnistä',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgWhite,
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                    ),
+                    child: const Text(
+                      'Tämä sovellus hyödyntää julkisia rajapintoja näyttääkseen '
+                      'pääkaupunkiseudun liityntäpysäköintien vapaita paikkoja ja '
+                      'reittiehdotuksia. Sovellus ei ole HSL:n tuottama eikä siihen '
+                      'liittyvä virallinen palvelu. Pysäköintialueiden hinnat ja '
+                      'aikarajoitukset voivat vaihdella kohteittain — varmista '
+                      'voimassa olevat ehdot HSL:n omilta sivuilta ennen pysäköintiä.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.45,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
                 ],
               ),
             ),

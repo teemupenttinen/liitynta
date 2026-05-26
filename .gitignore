@@ -8,9 +8,9 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native builds
-ios/
-android/
+# Native builds (legacy Expo top-level dirs; Flutter's flutter/ios and flutter/android must remain tracked)
+/ios/
+/android/
 *.jks
 *.p8
 *.p12

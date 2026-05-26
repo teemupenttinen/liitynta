@@ -57,7 +57,7 @@ class RouteCard extends StatelessWidget {
     final state = context.watch<AppState>();
     final isFav = state.favouriteParkingSpots
         .any((s) => s.facilityId == route.parking.id);
-    final hasAvail = route.parking.availability != null;
+    final hasAvail = route.parking.available != null;
     final availColor = !hasAvail
         ? AppColors.availNeutral
         : route.parking.availability == AvailabilityLevel.high

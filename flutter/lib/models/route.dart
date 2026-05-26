@@ -5,9 +5,9 @@ enum AvailabilityLevel { high, medium, low }
 class ParkingFacility {
   final String id;
   final String name;
-  final int available;
+  final int? available;
   final int capacity;
-  final AvailabilityLevel? availability;
+  final AvailabilityLevel availability;
   final double latitude;
   final double longitude;
   final int walkToStationMinutes;
@@ -17,10 +17,10 @@ class ParkingFacility {
     required this.name,
     required this.available,
     required this.capacity,
-    this.availability,
+    required this.availability,
     required this.latitude,
     required this.longitude,
-    required this.walkToStationMinutes,
+    this.walkToStationMinutes = 0,
   });
 }
 
@@ -92,22 +92,3 @@ class FavouriteParkingSpot {
   });
 }
 
-class Facility {
-  final int id;
-  final String name;
-  final double latitude;
-  final double longitude;
-  final int capacity;
-  final int? available;
-  final AvailabilityLevel availability;
-
-  const Facility({
-    required this.id,
-    required this.name,
-    required this.latitude,
-    required this.longitude,
-    required this.capacity,
-    required this.available,
-    required this.availability,
-  });
-}

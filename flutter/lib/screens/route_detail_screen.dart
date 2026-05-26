@@ -84,10 +84,90 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     super.dispose();
   }
 
+  Widget _buildHeader() {
+    return Container(
+      color: AppColors.primary,
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: const Icon(LucideIcons.arrowLeft,
+                size: 24, color: AppColors.textWhite),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          const Text('Reitin tiedot',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textWhite)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.mapPin,
+                          size: 48, color: AppColors.textMuted),
+                      const SizedBox(height: AppSpacing.md),
+                      const Text(
+                        'Reittiä ei ole valittu',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Palaa karttanäkymään ja valitse reitti.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 14, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.textWhite,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xl, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadii.md)),
+                        ),
+                        child: const Text('Takaisin karttaan'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final route = state.selectedRoute;
+    if (route == null) return _buildEmptyState();
     final navState = _navState;
 
     return Scaffold(
@@ -96,26 +176,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
         bottom: false,
         child: Column(
           children: [
-            Container(
-              color: AppColors.primary,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: const Icon(LucideIcons.arrowLeft,
-                        size: 24, color: AppColors.textWhite),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  const Text('Reitin tiedot',
-                      style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textWhite)),
-                ],
-              ),
-            ),
+            _buildHeader(),
             Container(
               color: AppColors.bgWhite,
               padding: const EdgeInsets.all(AppSpacing.xl),
@@ -133,7 +194,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${route?.totalMinutes ?? 38} min',
+                      Text('${route.totalMinutes} min',
                           style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
@@ -159,12 +220,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary)),
                   ),
-                  ...(route?.legs ?? []).asMap().entries.map((e) {
+                  ...route.legs.asMap().entries.map((e) {
                     final idx = e.key;
                     final leg = e.value;
                     final cfg = _modeConfig[leg.mode]!;
                     final prevCfg = idx > 0
-                        ? _modeConfig[route!.legs[idx - 1].mode]
+                        ? _modeConfig[route.legs[idx - 1].mode]
                         : null;
                     return IntrinsicHeight(
                       child: Row(
@@ -328,11 +389,11 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                             children: [
                               SizedBox(
                                 height: AppSpacing.lg,
-                                child: (route?.legs.isNotEmpty ?? false)
+                                child: route.legs.isNotEmpty
                                     ? Container(
                                         width: 3,
                                         color: _modeConfig[
-                                                route!.legs.last.mode]!
+                                                route.legs.last.mode]!
                                             .color,
                                       )
                                     : null,
@@ -386,7 +447,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 children: [
                   Text(
                     navState == nav.NavigationState.driveToParking
-                        ? 'Aja ${route?.parking.name ?? 'Itäkeskus P+R'} -parkkiin'
+                        ? 'Aja ${route.parking.name} -parkkiin'
                         : 'Olet pysäköintipaikalla',
                     style: const TextStyle(
                         fontSize: 13,
@@ -406,19 +467,17 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                                 BorderRadius.circular(AppRadii.md)),
                       ),
                       onPressed: () {
-                        final p = route?.parking;
+                        final p = route.parking;
                         final dLat = state.destLatitude;
                         final dLon = state.destLongitude;
-                        if (navState == nav.NavigationState.navigateToDestination &&
-                            p != null && dLat != null && dLon != null) {
+                        if (navState ==
+                                nav.NavigationState.navigateToDestination &&
+                            dLat != null && dLon != null) {
                           nav.navigateTransit(
                               p.latitude, p.longitude, dLat, dLon);
-                        } else if (p != null) {
+                        } else {
                           nav.navigateTo(p.latitude, p.longitude,
                               label: p.name);
-                        } else {
-                          nav.navigateTo(60.2095, 25.0828,
-                              label: 'Itäkeskus P+R');
                         }
                       },
                       child: Row(

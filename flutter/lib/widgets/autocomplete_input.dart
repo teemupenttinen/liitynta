@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../services/digitransit.dart';
 import '../theme.dart';
+import 'buttons.dart';
 
 class AutocompleteInput extends StatefulWidget {
   final String value;
@@ -40,20 +41,24 @@ class _AutocompleteInputState extends State<AutocompleteInput> {
   List<GeocodeSuggestion> _suggestions = [];
   Timer? _debounce;
   bool _selected = false;
+  bool _focused = false;
 
   @override
   void initState() {
     super.initState();
     _controller.text = widget.value;
-    _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) {
-        Future.delayed(const Duration(milliseconds: 200), () {
-          if (mounted && _overlay.isShowing) _overlay.hide();
-        });
-      } else if (_suggestions.isNotEmpty && !_selected) {
-        _overlay.show();
-      }
-    });
+    _focusNode.addListener(_handleFocusChange);
+  }
+
+  void _handleFocusChange() {
+    if (mounted) setState(() => _focused = _focusNode.hasFocus);
+    if (!_focusNode.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && _overlay.isShowing) _overlay.hide();
+      });
+    } else if (_suggestions.isNotEmpty && !_selected) {
+      _overlay.show();
+    }
   }
 
   @override
@@ -69,6 +74,7 @@ class _AutocompleteInputState extends State<AutocompleteInput> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _focusNode.removeListener(_handleFocusChange);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -138,51 +144,51 @@ class _AutocompleteInputState extends State<AutocompleteInput> {
                   decoration: BoxDecoration(
                     color: AppColors.bgWhite,
                     borderRadius: BorderRadius.circular(AppRadii.md),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x1F000000),
-                        offset: Offset(0, 4),
-                        blurRadius: 12,
-                      ),
-                    ],
+                    boxShadow: AppShadows.popover,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       for (int i = 0; i < _suggestions.length; i++)
-                        InkWell(
-                          onTap: () => _handleSelect(_suggestions[i]),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.lg,
-                              vertical: AppSpacing.md,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: i < _suggestions.length - 1
-                                      ? AppColors.borderLight
-                                      : Colors.transparent,
-                                  width: 0.5,
-                                ),
+                        Semantics(
+                          button: true,
+                          label: _suggestions[i].label,
+                          child: InkWell(
+                            onTap: () => _handleSelect(_suggestions[i]),
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                  minHeight: kMinTouchTarget),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.lg,
+                                vertical: AppSpacing.md,
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(LucideIcons.mapPin,
-                                    size: 14, color: AppColors.textMuted),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Text(
-                                    _suggestions[i].label,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 14,
-                                        color: AppColors.textPrimary),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: i < _suggestions.length - 1
+                                        ? AppColors.borderLight
+                                        : Colors.transparent,
+                                    width: 0.5,
                                   ),
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(LucideIcons.mapPin,
+                                      size: 14,
+                                      color: AppColors.textSecondary),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Text(
+                                      _suggestions[i].label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.bodyRegular.copyWith(
+                                          color: AppColors.textPrimary),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -193,19 +199,20 @@ class _AutocompleteInputState extends State<AutocompleteInput> {
             ),
           );
         },
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutQuart,
           height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          padding:
+              const EdgeInsets.only(left: AppSpacing.lg, right: AppSpacing.xs),
           decoration: BoxDecoration(
             color: AppColors.bgWhite,
             borderRadius: BorderRadius.circular(AppRadii.md),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x12000000),
-                offset: Offset(0, 2),
-                blurRadius: 8,
-              ),
-            ],
+            border: Border.all(
+              color: _focused ? AppColors.primary : Colors.transparent,
+              width: 2,
+            ),
+            boxShadow: AppShadows.input,
           ),
           child: Row(
             children: [
@@ -218,27 +225,31 @@ class _AutocompleteInputState extends State<AutocompleteInput> {
                   onChanged: _handleChanged,
                   onSubmitted: (_) => widget.onSubmitted?.call(),
                   textInputAction: TextInputAction.search,
-                  style: const TextStyle(
-                      fontSize: 15, color: AppColors.textPrimary),
+                  style: AppTextStyles.itemBody.copyWith(color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
                     hintText: widget.placeholder,
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
+                    hintStyle:
+                        const TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
               ),
               if (_controller.text.isNotEmpty)
-                GestureDetector(
+                IconTapTarget(
+                  icon: LucideIcons.x,
+                  iconSize: 18,
+                  color: AppColors.textSecondary,
+                  semanticLabel: 'Tyhjennä ${widget.placeholder.toLowerCase()}',
                   onTap: _handleClear,
-                  child: const Icon(LucideIcons.x,
-                      size: 18, color: AppColors.textMuted),
                 )
               else if (isOrigin && widget.onRequestLocation != null)
-                GestureDetector(
-                  onTap: widget.onRequestLocation,
-                  child: const Icon(LucideIcons.locateFixed,
-                      size: 20, color: AppColors.textMuted),
+                IconTapTarget(
+                  icon: LucideIcons.locateFixed,
+                  iconSize: 20,
+                  color: AppColors.textSecondary,
+                  semanticLabel: 'Käytä nykyistä sijaintia',
+                  onTap: widget.onRequestLocation!,
                 ),
             ],
           ),

@@ -144,7 +144,8 @@ class RawFacility {
   return (lat: latSum / ring.length, lng: lngSum / ring.length);
 }
 
-AvailabilityLevel availabilityLevel(int available, int _capacity) {
+AvailabilityLevel availabilityLevel(int? available, int _capacity) {
+  if (available == null) return AvailabilityLevel.unknown;
   if (available > 10) return AvailabilityLevel.high;
   if (available >= 5) return AvailabilityLevel.medium;
   return AvailabilityLevel.low;
@@ -424,7 +425,7 @@ Future<List<AppRoute>> searchRoutes(
       name: f.name,
       available: f.available,
       capacity: f.capacity,
-      availability: availabilityLevel(f.available ?? 0, f.capacity),
+      availability: availabilityLevel(f.available, f.capacity),
       latitude: f.latitude,
       longitude: f.longitude,
       walkToStationMinutes: walkToStationMinutes,

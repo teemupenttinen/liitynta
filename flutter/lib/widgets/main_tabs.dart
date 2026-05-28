@@ -28,10 +28,8 @@ class MainTabs extends StatelessWidget {
         backgroundColor: AppColors.bgWhite,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textMuted,
-        selectedLabelStyle:
-            const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-        unselectedLabelStyle:
-            const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        selectedLabelStyle: AppTextStyles.caption,
+        unselectedLabelStyle: AppTextStyles.caption,
         items: const [
           BottomNavigationBarItem(
               icon: Icon(LucideIcons.map), label: 'KARTTA'),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/route.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import 'buttons.dart';
 
 const _modeColors = <TransitMode, Color>{
   TransitMode.drive: AppColors.driveBlue,
@@ -34,6 +35,13 @@ const _modeLabels = <TransitMode, String>{
   TransitMode.ferry: 'Lautta',
 };
 
+const _availabilityWord = <AvailabilityLevel, String>{
+  AvailabilityLevel.high: 'Hyvin tilaa',
+  AvailabilityLevel.medium: 'Vähän',
+  AvailabilityLevel.low: 'Täynnä',
+  AvailabilityLevel.unknown: 'Ei tietoa',
+};
+
 class RouteCard extends StatelessWidget {
   final AppRoute route;
   final VoidCallback onTap;
@@ -54,9 +62,10 @@ class RouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final isFav = state.favouriteParkingSpots
-        .any((s) => s.facilityId == route.parking.id);
+    final isFav = context.select<AppState, bool>(
+      (s) =>
+          s.favouriteParkingSpots.any((f) => f.facilityId == route.parking.id),
+    );
     final hasAvail = route.parking.available != null;
     final availColor = !hasAvail
         ? AppColors.availNeutral
@@ -65,6 +74,7 @@ class RouteCard extends StatelessWidget {
             : route.parking.availability == AvailabilityLevel.medium
                 ? AppColors.availMedium
                 : AppColors.availLow;
+    final availWord = _availabilityWord[route.parking.availability] ?? '';
 
     final driveLeg = route.legs.cast<RouteLeg?>().firstWhere(
           (l) => l?.mode == TransitMode.drive,
@@ -81,248 +91,234 @@ class RouteCard extends StatelessWidget {
         .where((l) => l.mode == TransitMode.walk)
         .fold<int>(0, (sum, l) => sum + l.durationMinutes);
 
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.borderLight,
-            width: 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.2),
-                    offset: const Offset(0, 2),
-                    blurRadius: 8,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label:
+          '${route.parking.name}, ${route.totalMinutes} minuuttia, ${availWord.toLowerCase()}'
+          '${hasAvail ? ", ${route.parking.available} vapaata paikkaa ${route.parking.capacity}:sta" : ""}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceTinted,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : AppColors.borderLight,
+                width: 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.2),
+                        offset: const Offset(0, 2),
+                        blurRadius: 8,
+                      ),
+                    ]
+                  : null,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  // Availability column (functional, not decorative)
+                  _AvailabilityColumn(
+                    available: route.parking.available,
+                    capacity: route.parking.capacity,
+                    color: availColor,
                   ),
-                ]
-              : null,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              // Availability sidebar
-              Container(
-                width: 56,
-                color: availColor,
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      hasAvail
-                          ? route.parking.available.toString()
-                          : route.parking.capacity.toString(),
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textWhite,
-                      ),
-                    ),
-                    if (hasAvail)
-                      Text(
-                        '/${route.parking.capacity}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.8),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      route.parking.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.bodyEmphasis.copyWith(
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        if (driveLeg != null) ...[
+                                          const Icon(LucideIcons.car,
+                                              size: 12,
+                                              color:
+                                                  AppColors.textSecondary),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                              '${driveLeg.durationMinutes} min',
+                                              style: AppTextStyles.captionLight.copyWith(
+                                                  color: AppColors
+                                                      .textSecondary)),
+                                          const SizedBox(width: 10),
+                                        ],
+                                        if (transitLeg != null) ...[
+                                          if (_modeIcons[transitLeg.mode] !=
+                                              null)
+                                            Icon(
+                                              _modeIcons[transitLeg.mode],
+                                              size: 12,
+                                              color:
+                                                  _modeColors[transitLeg.mode],
+                                            ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                              '${transitLeg.durationMinutes} min',
+                                              style: AppTextStyles.captionLight.copyWith(
+                                                  color: AppColors
+                                                      .textSecondary)),
+                                          const SizedBox(width: 10),
+                                        ],
+                                        if (walkMinutes > 0) ...[
+                                          const Icon(LucideIcons.footprints,
+                                              size: 12,
+                                              color: AppColors.walkGray),
+                                          const SizedBox(width: 4),
+                                          Text('$walkMinutes min',
+                                              style: AppTextStyles.captionLight.copyWith(
+                                                  color: AppColors
+                                                      .textSecondary)),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (transitLeg != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 3, horizontal: 7),
+                                  decoration: BoxDecoration(
+                                    color: _modeColors[transitLeg.mode],
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadii.xs),
+                                  ),
+                                  child: Text(
+                                    transitLeg.lineName != null
+                                        ? '${transitLeg.lineName} ${_modeLabels[transitLeg.mode] ?? ''}'
+                                            .trim()
+                                        : _modeLabels[transitLeg.mode] ??
+                                            transitLeg.mode.name,
+                                    style: AppTextStyles.captionStrong.copyWith(
+                                      color: AppColors.textWhite,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Text('${route.totalMinutes} min',
+                                  style: AppTextStyles.itemPrice.copyWith(
+                                    color: AppColors.primary,
+                                  )),
+                            ],
+                          ),
                         ),
-                      ),
-                    Text(
-                      hasAvail ? 'vapaana' : 'paikkaa',
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
+                        Container(height: 1, color: AppColors.borderLight),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: InlineCTAButton(
+                                  label: actionLabel,
+                                  onTap: onAction ?? onTap,
+                                  semanticLabel:
+                                      '$actionLabel ${route.parking.name}',
+                                ),
+                              ),
+                              FavouriteToggleButton(
+                                isFavourite: isFav,
+                                semanticLabel: isFav
+                                    ? 'Poista ${route.parking.name} suosikeista'
+                                    : 'Lisää ${route.parking.name} suosikkeihin',
+                                onTap: () {
+                                  final s = context.read<AppState>();
+                                  if (isFav) {
+                                    s.removeFavouriteParkingSpot(
+                                        route.parking.id);
+                                  } else {
+                                    s.addFavouriteParkingSpot(
+                                      FavouriteParkingSpot(
+                                        id: route.parking.id,
+                                        facilityId: route.parking.id,
+                                        name: route.parking.name,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              // Right content
-              Expanded(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  route.parking.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    if (driveLeg != null) ...[
-                                      const Icon(LucideIcons.car,
-                                          size: 11,
-                                          color: AppColors.textSecondary),
-                                      const SizedBox(width: 4),
-                                      Text('${driveLeg.durationMinutes} min',
-                                          style: const TextStyle(
-                                              fontSize: 10,
-                                              color:
-                                                  AppColors.textSecondary)),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    if (transitLeg != null) ...[
-                                      if (_modeIcons[transitLeg.mode] != null)
-                                        Icon(
-                                          _modeIcons[transitLeg.mode],
-                                          size: 11,
-                                          color: _modeColors[transitLeg.mode],
-                                        ),
-                                      const SizedBox(width: 4),
-                                      Text('${transitLeg.durationMinutes} min',
-                                          style: const TextStyle(
-                                              fontSize: 10,
-                                              color:
-                                                  AppColors.textSecondary)),
-                                      const SizedBox(width: 8),
-                                    ],
-                                    if (walkMinutes > 0) ...[
-                                      const Icon(LucideIcons.footprints,
-                                          size: 11,
-                                          color: AppColors.walkGray),
-                                      const SizedBox(width: 4),
-                                      Text('$walkMinutes min',
-                                          style: const TextStyle(
-                                              fontSize: 10,
-                                              color:
-                                                  AppColors.textSecondary)),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (transitLeg != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 2, horizontal: 6),
-                              decoration: BoxDecoration(
-                                color: _modeColors[transitLeg.mode],
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: Text(
-                                transitLeg.lineName != null
-                                    ? '${transitLeg.lineName} ${_modeLabels[transitLeg.mode] ?? ''}'
-                                        .trim()
-                                    : _modeLabels[transitLeg.mode] ??
-                                        transitLeg.mode.name,
-                                style: const TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textWhite,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 8),
-                          Text('${route.totalMinutes} min',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              )),
-                        ],
-                      ),
-                    ),
-                    Container(height: 1, color: AppColors.borderLight),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: onAction ?? onTap,
-                              child: Container(
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(7),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(LucideIcons.mapPin,
-                                        size: 13, color: AppColors.primary),
-                                    const SizedBox(width: 5),
-                                    Text(actionLabel,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.primary,
-                                        )),
-                                    const SizedBox(width: 5),
-                                    const Icon(LucideIcons.chevronRight,
-                                        size: 13, color: AppColors.primary),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              if (isFav) {
-                                state.removeFavouriteParkingSpot(
-                                    route.parking.id);
-                              } else {
-                                state.addFavouriteParkingSpot(
-                                  FavouriteParkingSpot(
-                                    id: route.parking.id,
-                                    facilityId: route.parking.id,
-                                    name: route.parking.name,
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: isFav
-                                    ? AppColors.favBgActive
-                                    : AppColors.favBg,
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                              child: Icon(
-                                isFav ? Icons.favorite : LucideIcons.heart,
-                                size: 14,
-                                color: isFav
-                                    ? AppColors.availLow
-                                    : AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Functional content column on the left of every route card.
+/// Carries the availability count + label.
+class _AvailabilityColumn extends StatelessWidget {
+  final int? available;
+  final int capacity;
+  final Color color;
+  const _AvailabilityColumn({
+    required this.available,
+    required this.capacity,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAvail = available != null;
+    return Container(
+      width: 56,
+      color: color,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            hasAvail ? available.toString() : capacity.toString(),
+            style: AppTextStyles.heroNumber.copyWith(
+              color: AppColors.textWhite,
+            ),
+          ),
+          if (hasAvail)
+            Text(
+              '/$capacity',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textWhite,
+              ),
+            ),
+          Text(
+            hasAvail ? 'vapaana' : 'paikkaa',
+            style: AppTextStyles.availabilityLabel.copyWith(
+              color: AppColors.textWhite,
+            ),
+          ),
+        ],
       ),
     );
   }

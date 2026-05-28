@@ -7,6 +7,7 @@ import '../models/route.dart';
 import '../services/navigation.dart' as nav;
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../widgets/buttons.dart';
 
 class _ModeConfig {
   final Color color;
@@ -88,19 +89,19 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     return Container(
       color: AppColors.primary,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
+          horizontal: AppSpacing.xs, vertical: AppSpacing.sm),
       child: Row(
         children: [
-          GestureDetector(
+          IconTapTarget(
+            icon: LucideIcons.arrowLeft,
+            iconSize: 24,
+            color: AppColors.textWhite,
+            semanticLabel: 'Takaisin karttaan',
             onTap: () => Navigator.of(context).pop(),
-            child: const Icon(LucideIcons.arrowLeft,
-                size: 24, color: AppColors.textWhite),
           ),
-          const SizedBox(width: AppSpacing.md),
-          const Text('Reitin tiedot',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(width: AppSpacing.xs),
+          Text('Reitin tiedot',
+              style: AppTextStyles.screenTitle.copyWith(
                   color: AppColors.textWhite)),
         ],
       ),
@@ -125,19 +126,17 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                       const Icon(LucideIcons.mapPin,
                           size: 48, color: AppColors.textMuted),
                       const SizedBox(height: AppSpacing.md),
-                      const Text(
+                      Text(
                         'Reittiä ei ole valittu',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                        style: AppTextStyles.sectionTitle.copyWith(
                             color: AppColors.textPrimary),
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      const Text(
+                      Text(
                         'Palaa karttanäkymään ja valitse reitti.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 14, color: AppColors.textSecondary),
+                        style: AppTextStyles.bodyRegular.copyWith(
+                            color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       ElevatedButton(
@@ -185,9 +184,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   Expanded(
                     child: Text(
                       '${state.origin.trim().isEmpty ? 'Lähtöpaikka' : state.origin} → ${state.destination.trim().isEmpty ? 'Määränpää' : state.destination}',
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                      style: AppTextStyles.sectionTitleStrong.copyWith(
                           color: AppColors.textPrimary),
                     ),
                   ),
@@ -195,13 +192,10 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('${route.totalMinutes} min',
-                          style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
+                          style: AppTextStyles.heroNumberLarge.copyWith(
                               color: AppColors.primary)),
-                      const Text('kokonaisaika',
-                          style: TextStyle(
-                              fontSize: 11,
+                      Text('kokonaisaika',
+                          style: AppTextStyles.captionLight.copyWith(
                               color: AppColors.textMuted)),
                     ],
                   ),
@@ -212,12 +206,10 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.xl),
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: AppSpacing.lg),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                     child: Text('Reitin vaiheet',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                        style: AppTextStyles.bodyEmphasis.copyWith(
                             color: AppColors.textSecondary)),
                   ),
                   ...route.legs.asMap().entries.map((e) {
@@ -288,9 +280,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                                 children: [
                                 if (leg.mode == TransitMode.park) ...[
                                   Text('Pysäköinti – ${leg.parking?.name}',
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
+                                      style: AppTextStyles.bodyEmphasis.copyWith(
                                           color: AppColors.textPrimary)),
                                   const SizedBox(height: 4),
                                   Row(
@@ -305,9 +295,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                                       const SizedBox(width: 8),
                                       Text(
                                           'Vapaana ${leg.parking?.available}/${leg.parking?.capacity}',
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
+                                          style: AppTextStyles.bodySmall.copyWith(
                                               color: AppColors.availHigh)),
                                     ],
                                   ),
@@ -315,33 +303,24 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                                   if (leg.lineDescription != null)
                                     Text(
                                         '${leg.lineName} – ${leg.lineDescription}',
-                                        style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
+                                        style: AppTextStyles.bodySmall.copyWith(
                                             color:
                                                 AppColors.textSecondary)),
                                   Text(leg.from,
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
+                                      style: AppTextStyles.body.copyWith(
                                           color: AppColors.textPrimary)),
                                   Text('→ ${leg.to}',
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
+                                      style: AppTextStyles.body.copyWith(
                                           color: AppColors.textPrimary)),
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
                                       Text('${leg.durationMinutes} min',
-                                          style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
+                                          style: AppTextStyles.bodySmallEmphasis.copyWith(
                                               color: cfg.color)),
                                       const SizedBox(width: AppSpacing.lg),
                                       Text('${leg.distanceKm} km',
-                                          style: const TextStyle(
-                                              fontSize: 13,
+                                          style: AppTextStyles.bodySmall.copyWith(
                                               color:
                                                   AppColors.textSecondary)),
                                     ],
@@ -353,7 +332,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                                     decoration: BoxDecoration(
                                       color: cfg.bgColor,
                                       borderRadius:
-                                          BorderRadius.circular(13),
+                                          BorderRadius.circular(AppRadii.md),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -362,9 +341,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                                             size: 14, color: cfg.color),
                                         const SizedBox(width: 5),
                                         Text(cfg.label,
-                                            style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
+                                            style: AppTextStyles.label.copyWith(
                                                 color: cfg.color)),
                                       ],
                                     ),
@@ -411,18 +388,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Määränpää',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
+                                Text('Määränpää',
+                                    style: AppTextStyles.labelLight.copyWith(
                                         color: AppColors.textMuted)),
                                 Text(
                                   state.destination.trim().isEmpty
                                       ? 'Määränpää'
                                       : state.destination,
-                                  style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
+                                  style: AppTextStyles.itemTitle.copyWith(
                                       color: AppColors.textPrimary),
                                 ),
                               ],
@@ -449,9 +422,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     navState == nav.NavigationState.driveToParking
                         ? 'Aja ${route.parking.name} -parkkiin'
                         : 'Olet pysäköintipaikalla',
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                    style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textMuted),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -480,22 +451,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                               label: p.name);
                         }
                       },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(LucideIcons.navigation,
-                              size: 20, color: AppColors.textWhite),
-                          const SizedBox(width: 10),
-                          Text(
-                            navState == nav.NavigationState.driveToParking
-                                ? 'Aja parkkiin'
-                                : 'Navigoi määränpäähän',
-                            style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textWhite),
-                          ),
-                        ],
+                      child: Text(
+                        navState == nav.NavigationState.driveToParking
+                            ? 'Aja parkkiin'
+                            : 'Navigoi määränpäähän',
+                        style: AppTextStyles.screenTitle.copyWith(
+                            color: AppColors.textWhite),
                       ),
                     ),
                   ),

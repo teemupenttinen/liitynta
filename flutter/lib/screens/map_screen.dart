@@ -13,20 +13,21 @@ import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/time_format.dart';
 import '../widgets/autocomplete_input.dart';
+import '../widgets/buttons.dart';
 import '../widgets/route_card.dart';
 
 const _initialCenter = LatLng(60.21, 25.0);
 const double _initialZoom = 10.5;
 
 const Map<TransitMode, Color> _modeLineColors = {
-  TransitMode.drive: Color(0xFF0047B3),
-  TransitMode.park: Color(0xFF0047B3),
-  TransitMode.metro: Color(0xFFFF6319),
-  TransitMode.bus: Color(0xFF0078D4),
-  TransitMode.tram: Color(0xFF00A651),
-  TransitMode.rail: Color(0xFF8B5CF6),
-  TransitMode.ferry: Color(0xFF06B6D4),
-  TransitMode.walk: Color(0xFF9CA3AF),
+  TransitMode.drive: AppColors.primary,
+  TransitMode.park: AppColors.primary,
+  TransitMode.metro: AppColors.metroOrange,
+  TransitMode.bus: AppColors.busBlue,
+  TransitMode.tram: AppColors.tramGreen,
+  TransitMode.rail: AppColors.railPurple,
+  TransitMode.ferry: AppColors.ferryCyan,
+  TransitMode.walk: AppColors.walkGray,
 };
 
 Color _availColor(AvailabilityLevel a) {
@@ -34,6 +35,7 @@ Color _availColor(AvailabilityLevel a) {
     case AvailabilityLevel.high: return AppColors.availHigh;
     case AvailabilityLevel.medium: return AppColors.availMedium;
     case AvailabilityLevel.low: return AppColors.availLow;
+    case AvailabilityLevel.unknown: return AppColors.availMedium;
   }
 }
 
@@ -67,7 +69,9 @@ class _MapScreenState extends State<MapScreen>
   late AppState _appState;
   int _lastSeenSearchNonce = 0;
 
-  static const double _collapsedHeight = 185;
+  // Collapsed-sheet height shows the full first route card + chrome.
+  // Sized so a single card (~110pt) plus header (~117pt) fits without clipping.
+  static const double _collapsedHeight = 230;
 
   @override
   void initState() {
@@ -335,10 +339,14 @@ class _MapScreenState extends State<MapScreen>
   void _toggleFavourite() {
     final state = context.read<AppState>();
     if (state.origin.trim().isEmpty || state.destination.trim().isEmpty) return;
-    final exists = state.commutePairs.any(
+    final existing = state.commutePairs.firstWhere(
       (p) => p.origin == state.origin && p.destination == state.destination,
+      orElse: () => CommutePair(
+          id: '', origin: '', destination: '', createdAt: DateTime.now()),
     );
-    if (!exists) {
+    if (existing.id.isNotEmpty) {
+      state.removeCommutePair(existing.id);
+    } else {
       state.addCommutePair(CommutePair(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         origin: state.origin.trim(),
@@ -367,19 +375,26 @@ class _MapScreenState extends State<MapScreen>
       ));
     }
     if (!hasSearched) {
-      for (final f in state.facilities.where((f) => (f.available ?? 0) > 0)) {
+      for (final f in state.facilities.where(
+          (f) => !state.showOnlyAvailable || (f.available ?? 0) > 0)) {
         final isSel = selectedFacility?.id == f.id;
         markers.add(Marker(
           point: LatLng(f.latitude, f.longitude),
           width: 60,
           height: 72,
           alignment: Alignment.topCenter,
-          child: GestureDetector(
-            onTap: () => setState(() => selectedFacility = f),
-            child: _ParkingPin(
-              count: f.available ?? f.capacity,
-              availColor: _availColor(f.availability),
-              selected: isSel,
+          child: Semantics(
+            button: true,
+            selected: isSel,
+            label:
+                'Pysäköinti ${f.name}, ${f.available != null ? "${f.available} vapaata paikkaa ${f.capacity}:sta" : "ei reaaliaikaista tietoa, ${f.capacity} paikkaa yhteensä"}',
+            child: GestureDetector(
+              onTap: () => setState(() => selectedFacility = f),
+              child: _ParkingPin(
+                count: f.available,
+                availColor: _availColor(f.availability),
+                selected: isSel,
+              ),
             ),
           ),
         ));
@@ -399,24 +414,30 @@ class _MapScreenState extends State<MapScreen>
           width: 60,
           height: 72,
           alignment: Alignment.topCenter,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              setState(() {
-                selectedRouteId = r.id;
-                promotedRouteId = r.id;
-              });
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (_cardsScrollCtrl.hasClients) {
-                  _cardsScrollCtrl.jumpTo(0);
-                }
-              });
-            },
-            child: _ParkingPin(
-              count: r.parking.available ?? r.parking.capacity,
-              availColor: _availColor(r.parking.availability),
-              selected: isSel,
-              faded: !isSel,
+          child: Semantics(
+            button: true,
+            selected: isSel,
+            label:
+                'Pysäköinti ${r.parking.name}, ${r.totalMinutes} minuuttia',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() {
+                  selectedRouteId = r.id;
+                  promotedRouteId = r.id;
+                });
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_cardsScrollCtrl.hasClients) {
+                    _cardsScrollCtrl.jumpTo(0);
+                  }
+                });
+              },
+              child: _ParkingPin(
+                count: r.parking.available,
+                availColor: _availColor(r.parking.availability),
+                selected: isSel,
+                faded: !isSel,
+              ),
             ),
           ),
         ));
@@ -434,10 +455,7 @@ class _MapScreenState extends State<MapScreen>
           color: color,
           shape: BoxShape.circle,
           border: Border.all(color: AppColors.bgWhite, width: 3),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x1F000000), offset: Offset(0, 2), blurRadius: 4),
-          ],
+          boxShadow: AppShadows.pill,
         ),
       ),
     );
@@ -452,242 +470,179 @@ class _MapScreenState extends State<MapScreen>
     bool isFav,
   ) {
     final screenH = MediaQuery.of(context).size.height;
-    // Expanded sheet leaves room for the search area + status bar
-    final expandedHeight = screenH - 300;
+    // Reserve ~300pt for status bar + search inputs + breathing room.
+    // Floor at 360pt so small phones (iPhone SE) still get a usable sheet.
+    final raw = screenH - 300;
+    final expandedHeight = raw < 360 ? 360.0 : raw;
     final travel = expandedHeight - _collapsedHeight;
 
-    return AnimatedBuilder(
-      animation: _sheetCtrl,
-      builder: (context, _) {
-        final translateY = (1 - _sheetCtrl.value) * travel;
-        return Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: expandedHeight,
-          child: Transform.translate(
-            offset: Offset(0, translateY),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: AppColors.bgWhite,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(AppRadii.xl),
-                  topRight: Radius.circular(AppRadii.xl),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x1F000000),
-                    offset: Offset(0, -3),
-                    blurRadius: 8,
+    final canExpand = hasResults && otherCount > 0;
+
+    final sheetContent = Container(
+      decoration: const BoxDecoration(
+        color: AppColors.bgWhite,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(AppRadii.xl),
+          topRight: Radius.circular(AppRadii.xl),
+        ),
+        boxShadow: AppShadows.sheet,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Combined drag handle + peek hint. Hidden when the sheet isn't
+          // expandable (single result or empty/loading), so the empty 44pt
+          // strip doesn't waste vertical space.
+          if (canExpand)
+            _SheetDragAffordance(
+              isExpanded: _isExpanded,
+              otherCount: otherCount,
+              onTap: _isExpanded ? _snapCollapsed : _snapExpanded,
+              onDragStart: () {
+                _dragStartValue = _sheetCtrl.value;
+                _sheetCtrl.stop();
+              },
+              onDragUpdate: (delta) {
+                final d = -delta / travel;
+                _sheetCtrl.value = (_sheetCtrl.value + d).clamp(0.0, 1.0);
+              },
+              onDragEnd: (velocity) {
+                if (velocity < -500) {
+                  _snapExpanded();
+                } else if (velocity > 500) {
+                  _snapCollapsed();
+                } else if (_sheetCtrl.value > 0.5) {
+                  _snapExpanded();
+                } else {
+                  _snapCollapsed();
+                }
+              },
+            )
+          else if (hasResults)
+            const SizedBox(height: AppSpacing.md),
+          if (hasResults) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, 0, AppSpacing.xs, AppSpacing.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            state.origin.split(',').first,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(LucideIcons.arrowRight,
+                            size: 14, color: AppColors.textSecondary),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            state.destination.split(',').first,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FavouriteToggleButton(
+                    isFavourite: isFav,
+                    semanticLabel: isFav
+                        ? 'Poista reitti suosikeista'
+                        : 'Tallenna reitti suosikkeihin',
+                    onTap: _toggleFavourite,
                   ),
                 ],
               ),
-              child: Column(
+            ),
+            Container(
+              height: 1,
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              color: AppColors.borderLight,
+            ),
+            Expanded(
+              child: ListView(
+                controller: _cardsScrollCtrl,
+                physics: _isExpanded
+                    ? const ClampingScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
+                    AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
                 children: [
-                  // Drag handle
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onVerticalDragStart: (_) {
-                      _dragStartValue = _sheetCtrl.value;
-                      _sheetCtrl.stop();
-                    },
-                    onVerticalDragUpdate: (d) {
-                      final delta = -(d.primaryDelta ?? 0) / travel;
-                      _sheetCtrl.value =
-                          (_sheetCtrl.value + delta).clamp(0.0, 1.0);
-                    },
-                    onVerticalDragEnd: (d) {
-                      final velocity = d.primaryVelocity ?? 0;
-                      if (velocity < -500) {
-                        _snapExpanded();
-                      } else if (velocity > 500) {
-                        _snapCollapsed();
-                      } else if (_sheetCtrl.value > 0.5) {
-                        _snapExpanded();
-                      } else {
-                        _snapCollapsed();
-                      }
-                    },
-                    child: Container(
-                      alignment: Alignment.center,
-                      height: 24,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: otherCount > 0
-                          ? Container(
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: AppColors.border,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            )
-                          : null,
-                    ),
-                  ),
-                  if (hasResults) ...[
+                  for (int i = 0; i < vr.length; i++)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    state.origin.split(',').first,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Icon(LucideIcons.arrowRight,
-                                    size: 14, color: AppColors.textMuted),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    state.destination.split(',').first,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: _toggleFavourite,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                    isFav
-                                        ? Icons.favorite
-                                        : LucideIcons.heart,
-                                    size: 16,
-                                    color: AppColors.availLow),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  'Suosikki',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      padding: EdgeInsets.only(
+                          top: i == 0 ? 0 : AppSpacing.md),
+                      child: RouteCard(
+                        route: vr[i],
+                        isSelected: vr[i].id == sel?.id,
+                        onTap: () {
+                          setState(() => selectedRouteId = vr[i].id);
+                          state.selectRoute(vr[i]);
+                        },
+                        onLongPress: () {
+                          state.selectRoute(vr[i]);
+                          Navigator.of(context).pushNamed('/route-detail');
+                        },
+                        onAction: () {
+                          state.selectRoute(vr[i]);
+                          Navigator.of(context).pushNamed('/route-detail');
+                        },
                       ),
-                    ),
-                    // Peek hint: toggles expanded/collapsed
-                    GestureDetector(
-                      onTap: _isExpanded ? _snapCollapsed : _snapExpanded,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: _isExpanded
-                              ? const [
-                                  Icon(LucideIcons.chevronsDown,
-                                      size: 16,
-                                      color: AppColors.textMuted),
-                                  SizedBox(width: 6),
-                                  Text('Pienennä',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textMuted)),
-                                ]
-                              : otherCount > 0
-                                  ? [
-                                      const Icon(LucideIcons.chevronsUp,
-                                          size: 16,
-                                          color: AppColors.textMuted),
-                                      const SizedBox(width: 6),
-                                      Text('$otherCount muuta tulosta',
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppColors.textMuted)),
-                                    ]
-                                  : const [],
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        controller: _cardsScrollCtrl,
-                        physics: _isExpanded
-                            ? const ClampingScrollPhysics()
-                            : const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.lg, 4, AppSpacing.lg, AppSpacing.lg),
-                        children: [
-                          for (int i = 0; i < vr.length; i++)
-                            Padding(
-                              padding:
-                                  EdgeInsets.only(top: i == 0 ? 0 : 10),
-                              child: RouteCard(
-                                route: vr[i],
-                                isSelected: vr[i].id == sel?.id,
-                                onTap: () {
-                                  setState(
-                                      () => selectedRouteId = vr[i].id);
-                                  state.selectRoute(vr[i]);
-                                },
-                                onLongPress: () {
-                                  state.selectRoute(vr[i]);
-                                  Navigator.of(context)
-                                      .pushNamed('/route-detail');
-                                },
-                                onAction: () {
-                                  state.selectRoute(vr[i]);
-                                  Navigator.of(context)
-                                      .pushNamed('/route-detail');
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ] else
-                    Padding(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: state.isSearching
-                          ? Column(
-                              children: const [
-                                SizedBox(height: AppSpacing.xl),
-                                CircularProgressIndicator(
-                                    color: AppColors.primary),
-                                SizedBox(height: AppSpacing.md),
-                                Text('Haetaan reittejä...',
-                                    style: TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 14)),
-                                SizedBox(height: AppSpacing.xl),
-                              ],
-                            )
-                          : Text(
-                              error ?? '',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: AppColors.availLow, fontSize: 14),
-                            ),
                     ),
                 ],
               ),
             ),
-          ),
-        );
-      },
+          ] else
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: state.isSearching
+                  ? Column(
+                      children: [
+                        const SizedBox(height: AppSpacing.xl),
+                        const CircularProgressIndicator(color: AppColors.primary),
+                        const SizedBox(height: AppSpacing.md),
+                        Text('Haetaan reittejä...',
+                            style: AppTextStyles.bodyRegular.copyWith(
+                                color: AppColors.textSecondary)),
+                        const SizedBox(height: AppSpacing.xl),
+                      ],
+                    )
+                  : Text(
+                      error ?? '',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyRegular.copyWith(
+                          color: AppColors.availLow),
+                    ),
+            ),
+        ],
+      ),
+    );
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: expandedHeight,
+      child: AnimatedBuilder(
+        animation: _sheetCtrl,
+        builder: (context, child) {
+          final translateY = (1 - _sheetCtrl.value) * travel;
+          return Transform.translate(
+            offset: Offset(0, translateY),
+            child: child,
+          );
+        },
+        child: sheetContent,
+      ),
     );
   }
 
@@ -814,13 +769,7 @@ class _MapScreenState extends State<MapScreen>
                       borderRadius: BorderRadius.circular(AppRadii.md),
                       border:
                           Border.all(color: AppColors.availLow, width: 1),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14000000),
-                          offset: Offset(0, 2),
-                          blurRadius: 6,
-                        ),
-                      ],
+                      boxShadow: AppShadows.panel,
                     ),
                     child: Row(
                       children: [
@@ -830,8 +779,8 @@ class _MapScreenState extends State<MapScreen>
                         Expanded(
                           child: Text(
                             state.facilitiesError!,
-                            style: const TextStyle(
-                                fontSize: 13, color: AppColors.textPrimary),
+                            style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textPrimary),
                           ),
                         ),
                         TextButton(
@@ -852,10 +801,8 @@ class _MapScreenState extends State<MapScreen>
                                       strokeWidth: 2,
                                       color: AppColors.primary),
                                 )
-                              : const Text('Yritä uudelleen',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                              : Text('Yritä uudelleen',
+                                  style: AppTextStyles.bodySmallEmphasis.copyWith(
                                       color: AppColors.primary)),
                         ),
                       ],
@@ -864,42 +811,45 @@ class _MapScreenState extends State<MapScreen>
                 ],
                 if (hasSearched && !_isExpanded) ...[
                   const SizedBox(height: AppSpacing.sm),
-                  GestureDetector(
-                    onTap: () {
-                      state.setOrigin('');
-                      state.setDestination('');
-                      setState(() {
-                        originCoords = null;
-                        destCoords = null;
-                      });
-                      _clearSearchResults();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 6, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgWhite,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x14000000),
-                            offset: Offset(0, 1),
-                            blurRadius: 4,
+                  Semantics(
+                    button: true,
+                    label: 'Tyhjennä haut',
+                    child: Material(
+                      color: AppColors.bgWhite,
+                      borderRadius: BorderRadius.circular(AppRadii.xl),
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadii.xl),
+                        onTap: () {
+                          state.setOrigin('');
+                          state.setDestination('');
+                          setState(() {
+                            originCoords = null;
+                            destCoords = null;
+                          });
+                          _clearSearchResults();
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.bgWhite,
+                            borderRadius: BorderRadius.circular(AppRadii.xl),
+                            boxShadow: AppShadows.pill,
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(LucideIcons.x,
-                              size: 12, color: AppColors.textSecondary),
-                          SizedBox(width: 4),
-                          Text('Tyhjennä haut',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textSecondary)),
-                        ],
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 14),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(LucideIcons.x,
+                                  size: 14, color: AppColors.textSecondary),
+                              const SizedBox(width: 4),
+                              Text('Tyhjennä haut',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -930,7 +880,7 @@ class _MapScreenState extends State<MapScreen>
 }
 
 class _ParkingPin extends StatelessWidget {
-  final int count;
+  final int? count;
   final Color availColor;
   final bool selected;
   final bool faded;
@@ -957,18 +907,11 @@ class _ParkingPin extends StatelessWidget {
               color: bg,
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.bgWhite, width: 2),
-              boxShadow: const [
-                BoxShadow(
-                    color: Color(0x2E000000),
-                    offset: Offset(0, 2),
-                    blurRadius: 6),
-              ],
+              boxShadow: AppShadows.pin,
             ),
             alignment: Alignment.center,
-            child: const Text('P',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+            child: Text('P',
+                style: AppTextStyles.sectionTitleStrong.copyWith(
                     color: AppColors.textWhite)),
           ),
           Container(
@@ -976,13 +919,8 @@ class _ParkingPin extends StatelessWidget {
             margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
               color: selected ? AppColors.primary : AppColors.bgWhite,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: const [
-                BoxShadow(
-                    color: Color(0x1F000000),
-                    offset: Offset(0, 1),
-                    blurRadius: 4),
-              ],
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              boxShadow: AppShadows.pill,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -995,10 +933,8 @@ class _ParkingPin extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '$count',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                  count?.toString() ?? '?',
+                  style: AppTextStyles.captionStrong.copyWith(
                     color: selected
                         ? AppColors.textWhite
                         : AppColors.textPrimary,
@@ -1008,6 +944,76 @@ class _ParkingPin extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Drag+tap affordance at the top of the results sheet. Combines the grab
+/// bar and the "$n muuta tulosta" / "Pienennä" caption so the user gets a
+/// single intentional 52pt zone instead of two stacked 44pt zones doing
+/// overlapping jobs.
+class _SheetDragAffordance extends StatelessWidget {
+  final bool isExpanded;
+  final int otherCount;
+  final VoidCallback onTap;
+  final VoidCallback onDragStart;
+  final ValueChanged<double> onDragUpdate;
+  final ValueChanged<double> onDragEnd;
+  const _SheetDragAffordance({
+    required this.isExpanded,
+    required this.otherCount,
+    required this.onTap,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final captionIcon =
+        isExpanded ? LucideIcons.chevronsDown : LucideIcons.chevronsUp;
+    final captionText = isExpanded ? 'Pienennä' : '$otherCount muuta tulosta';
+    return Semantics(
+      button: true,
+      label: isExpanded
+          ? 'Pienennä tuloslistaa'
+          : 'Laajenna tuloslistaa, $otherCount muuta tulosta',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        onVerticalDragStart: (_) => onDragStart(),
+        onVerticalDragUpdate: (d) => onDragUpdate(d.primaryDelta ?? 0),
+        onVerticalDragEnd: (d) => onDragEnd(d.primaryVelocity ?? 0),
+        child: SizedBox(
+          height: 52,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(AppRadii.xs / 2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(captionIcon,
+                      size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Text(captionText,
+                      style: AppTextStyles.labelLight.copyWith(
+                          color: AppColors.textSecondary)),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1031,13 +1037,7 @@ class _FacilitySheet extends StatelessWidget {
           topLeft: Radius.circular(AppRadii.xl),
           topRight: Radius.circular(AppRadii.xl),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x1F000000),
-            offset: Offset(0, -3),
-            blurRadius: 8,
-          ),
-        ],
+        boxShadow: AppShadows.sheet,
       ),
       padding: const EdgeInsets.only(top: 16, bottom: 24),
       child: Column(
@@ -1049,7 +1049,7 @@ class _FacilitySheet extends StatelessWidget {
               height: 4,
               decoration: BoxDecoration(
                 color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(AppRadii.xs / 2),
               ),
             ),
           ),
@@ -1058,116 +1058,66 @@ class _FacilitySheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F7FA),
-                borderRadius: BorderRadius.circular(14),
+                color: AppColors.surfaceTinted,
+                borderRadius: BorderRadius.circular(AppRadii.lg),
                 border: Border.all(color: AppColors.primary, width: 1),
               ),
               clipBehavior: Clip.antiAlias,
               child: IntrinsicHeight(
                 child: Row(
                   children: [
-                    Container(
-                      width: 56,
+                    _FacilityAvailabilityColumn(
+                      available: facility.available,
+                      capacity: facility.capacity,
                       color: color,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 6, horizontal: 4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            (facility.available ?? facility.capacity).toString(),
-                            style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textWhite),
-                          ),
-                          if (facility.available != null)
-                            Text('/${facility.capacity}',
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white.withOpacity(0.8))),
-                          Text(
-                            facility.available != null ? 'vapaana' : 'paikkaa',
-                            style: TextStyle(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                                color: Colors.white.withOpacity(0.8)),
-                          ),
-                        ],
-                      ),
                     ),
                     Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(facility.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                    style: AppTextStyles.bodyEmphasis.copyWith(
                                         color: AppColors.textPrimary)),
                                 const SizedBox(height: 2),
                                 Text(
                                   formatUpdatedAgo(state.facilitiesUpdatedAt),
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textMuted,
+                                  style: AppTextStyles.captionLight.copyWith(
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 4),
                           Container(
                               height: 1, color: AppColors.borderLight),
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: GestureDetector(
+                                  child: InlineCTAButton(
+                                    label: 'Navigoi parkkiin',
+                                    semanticLabel:
+                                        'Navigoi parkkiin ${facility.name}',
                                     onTap: () => nav.navigateTo(
                                       facility.latitude,
                                       facility.longitude,
                                       label: facility.name,
                                     ),
-                                    child: Container(
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryLight,
-                                      borderRadius: BorderRadius.circular(7),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: const [
-                                        Icon(LucideIcons.navigation,
-                                            size: 13, color: AppColors.primary),
-                                        SizedBox(width: 5),
-                                        Text('Navigoi parkkiin',
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.primary)),
-                                        SizedBox(width: 5),
-                                        Icon(LucideIcons.chevronRight,
-                                            size: 13, color: AppColors.primary),
-                                      ],
-                                    ),
-                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
+                                FavouriteToggleButton(
+                                  isFavourite: isFav,
+                                  semanticLabel: isFav
+                                      ? 'Poista ${facility.name} suosikeista'
+                                      : 'Lisää ${facility.name} suosikkeihin',
                                   onTap: () {
                                     final fid = facility.id;
                                     if (isFav) {
@@ -1182,25 +1132,6 @@ class _FacilitySheet extends StatelessWidget {
                                       );
                                     }
                                   },
-                                  child: Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color: isFav
-                                          ? AppColors.favBgActive
-                                          : AppColors.favBg,
-                                      borderRadius: BorderRadius.circular(7),
-                                    ),
-                                    child: Icon(
-                                      isFav
-                                          ? Icons.favorite
-                                          : LucideIcons.heart,
-                                      size: 14,
-                                      color: isFav
-                                          ? AppColors.availLow
-                                          : AppColors.textMuted,
-                                    ),
-                                  ),
                                 ),
                               ],
                             ),
@@ -1212,6 +1143,45 @@ class _FacilitySheet extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FacilityAvailabilityColumn extends StatelessWidget {
+  final int? available;
+  final int capacity;
+  final Color color;
+  const _FacilityAvailabilityColumn({
+    required this.available,
+    required this.capacity,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAvail = available != null;
+    return Container(
+      width: 56,
+      color: color,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            hasAvail ? available!.toString() : '?',
+            style: AppTextStyles.heroNumber.copyWith(
+                color: AppColors.textWhite),
+          ),
+          Text('/$capacity',
+              style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textWhite)),
+          Text(
+            'vapaana',
+            style: AppTextStyles.availabilityLabel.copyWith(
+                color: AppColors.textWhite),
           ),
         ],
       ),

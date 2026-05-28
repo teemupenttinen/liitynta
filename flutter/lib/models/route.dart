@@ -1,6 +1,6 @@
 enum TransitMode { drive, park, metro, bus, tram, rail, ferry, walk }
 
-enum AvailabilityLevel { high, medium, low }
+enum AvailabilityLevel { high, medium, low, unknown }
 
 class ParkingFacility {
   final String id;

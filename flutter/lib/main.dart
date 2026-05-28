@@ -38,7 +38,7 @@ Future<void> main() async {
     final state = AppState();
     await state.load();
     runApp(
-      ChangeNotifierProvider.value(
+      ChangeNotifierProvider<AppState>.value(
         value: state,
         child: const LiityntaparkkiApp(),
       ),
@@ -66,8 +66,7 @@ class _ConfigErrorApp extends StatelessWidget {
                 children: [
                   const Text(
                     'Sovelluksen asetukset puuttuvat',
-                    style: TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w700),
+                    style: AppTextStyles.subhero,
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -78,12 +77,11 @@ class _ConfigErrorApp extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     color: const Color(0xFFF0F0F0),
-                    child: const SelectableText(
+                    child: SelectableText(
                       'flutter run \\\n'
                       '  --dart-define=PROXY_URL=http://localhost:8787 \\\n'
                       '  --dart-define=APP_TOKEN=<token>',
-                      style: TextStyle(
-                          fontFamily: 'monospace', fontSize: 13),
+                      style: AppTextStyles.paragraph.copyWith(fontFamily: 'monospace'),
                     ),
                   ),
                 ],

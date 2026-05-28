@@ -117,12 +117,6 @@ class AppState extends ChangeNotifier {
     try {
       final raw = await fetchParkAndRideFacilities();
       final facs = raw.map((f) {
-        final avail = f.available ?? 0;
-        final lvl = avail > 10
-            ? AvailabilityLevel.high
-            : avail >= 5
-                ? AvailabilityLevel.medium
-                : AvailabilityLevel.low;
         return ParkingFacility(
           id: f.id.toString(),
           name: f.name,
@@ -130,7 +124,7 @@ class AppState extends ChangeNotifier {
           longitude: f.longitude,
           capacity: f.capacity,
           available: f.available,
-          availability: lvl,
+          availability: availabilityLevel(f.available, f.capacity),
         );
       }).toList();
       facilities = facs;

@@ -32,10 +32,14 @@ const Map<TransitMode, Color> _modeLineColors = {
 
 Color _availColor(AvailabilityLevel a) {
   switch (a) {
-    case AvailabilityLevel.high: return AppColors.availHigh;
-    case AvailabilityLevel.medium: return AppColors.availMedium;
-    case AvailabilityLevel.low: return AppColors.availLow;
-    case AvailabilityLevel.unknown: return AppColors.availMedium;
+    case AvailabilityLevel.high:
+      return AppColors.availHigh;
+    case AvailabilityLevel.medium:
+      return AppColors.availMedium;
+    case AvailabilityLevel.low:
+      return AppColors.availLow;
+    case AvailabilityLevel.unknown:
+      return AppColors.availMedium;
   }
 }
 
@@ -197,7 +201,8 @@ class _MapScreenState extends State<MapScreen>
     });
 
     try {
-      final placemarks = await gc.placemarkFromCoordinates(loc.latitude, loc.longitude);
+      final placemarks =
+          await gc.placemarkFromCoordinates(loc.latitude, loc.longitude);
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         final streetBase = (p.thoroughfare ?? p.street ?? '')
@@ -253,8 +258,12 @@ class _MapScreenState extends State<MapScreen>
 
       try {
         final results = await Future.wait([
-          oLat == null ? geocode(state.origin) : Future.value(<GeocodeSuggestion>[]),
-          dLat == null ? geocode(state.destination) : Future.value(<GeocodeSuggestion>[]),
+          oLat == null
+              ? geocode(state.origin)
+              : Future.value(<GeocodeSuggestion>[]),
+          dLat == null
+              ? geocode(state.destination)
+              : Future.value(<GeocodeSuggestion>[]),
         ]);
         if (oLat == null && results[0].isNotEmpty) {
           oLat = results[0][0].lat;
@@ -288,11 +297,13 @@ class _MapScreenState extends State<MapScreen>
 
     try {
       final found = await searchRoutes(
-        oLat!, oLon!, dLat!, dLon!,
+        oLat!,
+        oLon!,
+        dLat!,
+        dLon!,
         walkingSpeed: state.walkingSpeed.key,
-        originLabel: state.origin.trim().isEmpty
-            ? 'Lähtöpaikka'
-            : state.origin.trim(),
+        originLabel:
+            state.origin.trim().isEmpty ? 'Lähtöpaikka' : state.origin.trim(),
         destinationLabel: state.destination.trim().isEmpty
             ? 'Määränpää'
             : state.destination.trim(),
@@ -307,8 +318,7 @@ class _MapScreenState extends State<MapScreen>
         final points = <LatLng>[
           LatLng(oLat!, oLon!),
           LatLng(dLat!, dLon!),
-          ...found.map((r) =>
-              LatLng(r.parking.latitude, r.parking.longitude)),
+          ...found.map((r) => LatLng(r.parking.latitude, r.parking.longitude)),
         ];
         _mapController.fitCamera(
           CameraFit.coordinates(
@@ -375,8 +385,8 @@ class _MapScreenState extends State<MapScreen>
       ));
     }
     if (!hasSearched) {
-      for (final f in state.facilities.where(
-          (f) => !state.showOnlyAvailable || (f.available ?? 0) > 0)) {
+      for (final f in state.facilities
+          .where((f) => !state.showOnlyAvailable || (f.available ?? 0) > 0)) {
         final isSel = selectedFacility?.id == f.id;
         markers.add(Marker(
           point: LatLng(f.latitude, f.longitude),
@@ -417,8 +427,7 @@ class _MapScreenState extends State<MapScreen>
           child: Semantics(
             button: true,
             selected: isSel,
-            label:
-                'Pysäköinti ${r.parking.name}, ${r.totalMinutes} minuuttia',
+            label: 'Pysäköinti ${r.parking.name}, ${r.totalMinutes} minuuttia',
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
@@ -534,8 +543,8 @@ class _MapScreenState extends State<MapScreen>
                           child: Text(
                             state.origin.split(',').first,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.textSecondary),
+                            style: AppTextStyles.bodySmall
+                                .copyWith(color: AppColors.textSecondary),
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -546,8 +555,8 @@ class _MapScreenState extends State<MapScreen>
                           child: Text(
                             state.destination.split(',').first,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.textSecondary),
+                            style: AppTextStyles.bodySmall
+                                .copyWith(color: AppColors.textSecondary),
                           ),
                         ),
                       ],
@@ -574,13 +583,12 @@ class _MapScreenState extends State<MapScreen>
                 physics: _isExpanded
                     ? const ClampingScrollPhysics()
                     : const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                    AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
                 children: [
                   for (int i = 0; i < vr.length; i++)
                     Padding(
-                      padding: EdgeInsets.only(
-                          top: i == 0 ? 0 : AppSpacing.md),
+                      padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpacing.md),
                       child: RouteCard(
                         route: vr[i],
                         isSelected: vr[i].id == sel?.id,
@@ -608,19 +616,20 @@ class _MapScreenState extends State<MapScreen>
                   ? Column(
                       children: [
                         const SizedBox(height: AppSpacing.xl),
-                        const CircularProgressIndicator(color: AppColors.primary),
+                        const CircularProgressIndicator(
+                            color: AppColors.primary),
                         const SizedBox(height: AppSpacing.md),
                         Text('Haetaan reittejä...',
-                            style: AppTextStyles.bodyRegular.copyWith(
-                                color: AppColors.textSecondary)),
+                            style: AppTextStyles.bodyRegular
+                                .copyWith(color: AppColors.textSecondary)),
                         const SizedBox(height: AppSpacing.xl),
                       ],
                     )
                   : Text(
                       error ?? '',
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyRegular.copyWith(
-                          color: AppColors.availLow),
+                      style: AppTextStyles.bodyRegular
+                          .copyWith(color: AppColors.availLow),
                     ),
             ),
         ],
@@ -691,6 +700,7 @@ class _MapScreenState extends State<MapScreen>
                     InteractiveFlag.doubleTapZoom |
                     InteractiveFlag.drag |
                     InteractiveFlag.flingAnimation |
+                    InteractiveFlag.pinchMove |
                     InteractiveFlag.pinchZoom |
                     InteractiveFlag.rotate |
                     InteractiveFlag.scrollWheelZoom,
@@ -767,8 +777,7 @@ class _MapScreenState extends State<MapScreen>
                     decoration: BoxDecoration(
                       color: AppColors.bgWhite,
                       borderRadius: BorderRadius.circular(AppRadii.md),
-                      border:
-                          Border.all(color: AppColors.availLow, width: 1),
+                      border: Border.all(color: AppColors.availLow, width: 1),
                       boxShadow: AppShadows.panel,
                     ),
                     child: Row(
@@ -779,8 +788,8 @@ class _MapScreenState extends State<MapScreen>
                         Expanded(
                           child: Text(
                             state.facilitiesError!,
-                            style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.textPrimary),
+                            style: AppTextStyles.bodySmall
+                                .copyWith(color: AppColors.textPrimary),
                           ),
                         ),
                         TextButton(
@@ -798,12 +807,11 @@ class _MapScreenState extends State<MapScreen>
                                   width: 14,
                                   height: 14,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.primary),
+                                      strokeWidth: 2, color: AppColors.primary),
                                 )
                               : Text('Yritä uudelleen',
-                                  style: AppTextStyles.bodySmallEmphasis.copyWith(
-                                      color: AppColors.primary)),
+                                  style: AppTextStyles.bodySmallEmphasis
+                                      .copyWith(color: AppColors.primary)),
                         ),
                       ],
                     ),
@@ -911,8 +919,8 @@ class _ParkingPin extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text('P',
-                style: AppTextStyles.sectionTitleStrong.copyWith(
-                    color: AppColors.textWhite)),
+                style: AppTextStyles.sectionTitleStrong
+                    .copyWith(color: AppColors.textWhite)),
           ),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
@@ -935,9 +943,8 @@ class _ParkingPin extends StatelessWidget {
                 Text(
                   count?.toString() ?? '?',
                   style: AppTextStyles.captionStrong.copyWith(
-                    color: selected
-                        ? AppColors.textWhite
-                        : AppColors.textPrimary,
+                    color:
+                        selected ? AppColors.textWhite : AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -1003,12 +1010,11 @@ class _SheetDragAffordance extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(captionIcon,
-                      size: 14, color: AppColors.textSecondary),
+                  Icon(captionIcon, size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 4),
                   Text(captionText,
-                      style: AppTextStyles.labelLight.copyWith(
-                          color: AppColors.textSecondary)),
+                      style: AppTextStyles.labelLight
+                          .copyWith(color: AppColors.textSecondary)),
                 ],
               ),
             ],
@@ -1027,8 +1033,8 @@ class _FacilitySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final isFav = state.favouriteParkingSpots
-        .any((s) => s.facilityId == facility.id);
+    final isFav =
+        state.favouriteParkingSpots.any((s) => s.facilityId == facility.id);
     final color = _availColor(facility.availability);
     return Container(
       decoration: const BoxDecoration(
@@ -1095,8 +1101,7 @@ class _FacilitySheet extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Container(
-                              height: 1, color: AppColors.borderLight),
+                          Container(height: 1, color: AppColors.borderLight),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Row(
@@ -1172,16 +1177,16 @@ class _FacilityAvailabilityColumn extends StatelessWidget {
         children: [
           Text(
             hasAvail ? available!.toString() : '?',
-            style: AppTextStyles.heroNumber.copyWith(
-                color: AppColors.textWhite),
+            style:
+                AppTextStyles.heroNumber.copyWith(color: AppColors.textWhite),
           ),
           Text('/$capacity',
-              style: AppTextStyles.caption.copyWith(
-                  color: AppColors.textWhite)),
+              style:
+                  AppTextStyles.caption.copyWith(color: AppColors.textWhite)),
           Text(
             'vapaana',
-            style: AppTextStyles.availabilityLabel.copyWith(
-                color: AppColors.textWhite),
+            style: AppTextStyles.availabilityLabel
+                .copyWith(color: AppColors.textWhite),
           ),
         ],
       ),

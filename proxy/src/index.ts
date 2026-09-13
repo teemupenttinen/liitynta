@@ -1,8 +1,11 @@
 export interface Env {
   DIGITRANSIT_API_KEY: string;
   APP_TOKEN: string; // set in Worker secrets, checked against X-App-Token header
-  RATE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
+  RATE_LIMITER: RateLimiter;
+  TILE_RATE_LIMITER: RateLimiter; // map tiles come in bursts, so they get a bigger bucket
 }
+
+type RateLimiter = { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
 
 // Upstream base URLs
 const UPSTREAM: Record<string, string> = {
@@ -10,6 +13,7 @@ const UPSTREAM: Record<string, string> = {
   '/geocoding': 'https://api.digitransit.fi/geocoding/v1',
   '/facilities': 'https://parking.fintraffic.fi/api/v1/facilities.json',
   '/utilizations': 'https://parking.fintraffic.fi/api/v1/utilizations.json',
+  '/map': 'https://cdn.digitransit.fi/map/v3/hsl-map-256',
 };
 
 // How long to cache each route (seconds). 0 = no cache.
@@ -18,7 +22,11 @@ const CACHE_TTL: Record<string, number> = {
   '/geocoding': 3600,  // addresses are stable
   '/facilities': 300,  // facility list changes rarely
   '/utilizations': 60, // occupancy updates ~1/min
+  '/map': 604800,      // tiles change rarely; matches Digitransit's own max-age
 };
+
+// /map/{z}/{x}/{y}.png or /map/{z}/{x}/{y}@2x.png — nothing else is forwarded
+const TILE_PATH = /^\/map\/\d{1,2}\/\d{1,7}\/\d{1,7}(@2x)?\.png$/;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -32,22 +40,23 @@ export default {
       return new Response('Unauthorized', { status: 401 });
     }
 
+    const url = new URL(request.url);
+    const prefix = matchPrefix(url.pathname);
+
+    if (!prefix || (prefix === '/map' && !TILE_PATH.test(url.pathname))) {
+      return new Response('Not found', { status: 404 });
+    }
+
     // Per-IP rate limit
     const clientIp =
       request.headers.get('CF-Connecting-IP') ?? 'unknown';
-    const { success } = await env.RATE_LIMITER.limit({ key: clientIp });
+    const limiter = prefix === '/map' ? env.TILE_RATE_LIMITER : env.RATE_LIMITER;
+    const { success } = await limiter.limit({ key: clientIp });
     if (!success) {
       return new Response('Too many requests', {
         status: 429,
         headers: { 'Retry-After': '60' },
       });
-    }
-
-    const url = new URL(request.url);
-    const prefix = matchPrefix(url.pathname);
-
-    if (!prefix) {
-      return new Response('Not found', { status: 404 });
     }
 
     const upstreamUrl = buildUpstreamUrl(prefix, url);
@@ -110,6 +119,11 @@ function buildUpstreamUrl(prefix: string, url: URL): string {
   if (prefix === '/geocoding') {
     // Forward full path — /geocoding/v1/autocomplete → https://api.digitransit.fi/geocoding/v1/autocomplete
     return `https://api.digitransit.fi${url.pathname}${url.search}`;
+  }
+
+  if (prefix === '/map') {
+    // /map/13/4663/2371@2x.png → https://cdn.digitransit.fi/map/v3/hsl-map-256/13/4663/2371@2x.png
+    return `${upstream}${url.pathname.slice(prefix.length)}`;
   }
 
   // /facilities and /utilizations map directly to their fixed URLs with original query params

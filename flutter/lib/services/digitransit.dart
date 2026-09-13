@@ -11,6 +11,10 @@ const _geocodingUrl = '$_proxyBase/geocoding/v1';
 const _facilitiesUrl = '$_proxyBase/facilities';
 const _utilizationsUrl = '$_proxyBase/utilizations';
 
+// Background map tiles (Digitransit HSL map), also through the proxy so the
+// API key stays server-side.
+const mapTileUrlTemplate = '$_proxyBase/map/{z}/{x}/{y}{r}.png';
+
 const Map<String, double> _walkSpeeds = {
   'slow': 0.97,
   'normal': 1.28,
@@ -28,6 +32,9 @@ Map<String, String> _authHeaders([Map<String, String>? extra]) => {
       'X-App-Token': _appToken,
       if (extra != null) ...extra,
     };
+
+// Mutable on purpose: TileLayer adds its User-Agent to this map.
+Map<String, String> mapTileHeaders() => _authHeaders();
 
 const _httpTimeout = Duration(seconds: 10);
 const _maxRetries = 2;
@@ -301,13 +308,21 @@ class _TransitResult {
   _TransitResult(this.durationMinutes, this.legs);
 }
 
+String _two(int n) => n.toString().padLeft(2, '0');
+
 Future<_TransitResult?> _getTransitRoute(
   double fromLat, double fromLon, double toLat, double toLon,
-  {double walkSpeed = 1.39}) async {
+  {double walkSpeed = 1.39, required DateTime departAt}) async {
+  // plan() reads date and time as Finnish local time. The device clock of a
+  // commuter in Finland uses the same zone.
+  final date = '${departAt.year}-${_two(departAt.month)}-${_two(departAt.day)}';
+  final time = '${_two(departAt.hour)}:${_two(departAt.minute)}:00';
   final query = '''{
     plan(
       from: { lat: $fromLat, lon: $fromLon }
       to: { lat: $toLat, lon: $toLon }
+      date: "$date"
+      time: "$time"
       numItineraries: 3
       walkSpeed: $walkSpeed
       transportModes: [
@@ -383,7 +398,9 @@ Future<List<AppRoute>> searchRoutes(
   String walkingSpeed = 'normal',
   String originLabel = 'Lähtöpaikka',
   String destinationLabel = 'Määränpää',
+  DateTime? departAt,
 }) async {
+  final departure = departAt ?? DateTime.now();
   final allFacilities = await fetchParkAndRideFacilities();
   final originDestDist = _haversine(originLat, originLon, destLat, destLon);
   const maxDistanceKm = 100.0;
@@ -403,17 +420,21 @@ Future<List<AppRoute>> searchRoutes(
 
   final routes = await Future.wait(nearby.map((r) async {
     final f = r.f;
-    final results = await Future.wait([
-      _getDrivingRoute(originLat, originLon, f.latitude, f.longitude),
-      _getTransitRoute(f.latitude, f.longitude, destLat, destLon, walkSpeed: walkSpeedMs),
-    ]);
-    final driving = results[0] as _DrivingResult?;
-    final transit = results[1] as _TransitResult?;
-    if (driving == null || transit == null) return null;
+    final driving =
+        await _getDrivingRoute(originLat, originLon, f.latitude, f.longitude);
+    if (driving == null) return null;
+    // Plan transit from the moment the car reaches the P+R, not from the
+    // start of the trip, so that the plan never uses a departure the driver
+    // cannot catch.
+    final transit = await _getTransitRoute(
+      f.latitude, f.longitude, destLat, destLon,
+      walkSpeed: walkSpeedMs,
+      departAt: departure.add(Duration(minutes: driving.durationMinutes)),
+    );
+    if (transit == null) return null;
 
     final totalMinutes = driving.durationMinutes + transit.durationMinutes;
-    final now = DateTime.now();
-    final arrival = now.add(Duration(minutes: totalMinutes));
+    final arrival = departure.add(Duration(minutes: totalMinutes));
     final firstWalk = transit.legs.where((l) => l.mode == 'WALK').cast<_TransitLeg?>().firstWhere(
           (_) => true,
           orElse: () => null,
@@ -491,7 +512,7 @@ Future<List<AppRoute>> searchRoutes(
     return AppRoute(
       id: 'route-${f.id}',
       totalMinutes: totalMinutes,
-      departureTime: now,
+      departureTime: departure,
       arrivalTime: arrival,
       legs: legs,
       parking: parking,

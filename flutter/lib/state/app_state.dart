@@ -24,6 +24,8 @@ class AppState extends ChangeNotifier {
   List<AppRoute> routes = [];
   AppRoute? selectedRoute;
   bool isSearching = false;
+  // Departure time for route searches. Null means "leave now".
+  DateTime? departAt;
 
   // Facilities cache
   List<ParkingFacility> facilities = [];
@@ -178,6 +180,7 @@ class AppState extends ChangeNotifier {
   void setRoutes(List<AppRoute> r) { routes = r; notifyListeners(); }
   void selectRoute(AppRoute? r) { selectedRoute = r; notifyListeners(); }
   void setIsSearching(bool v) { isSearching = v; notifyListeners(); }
+  void setDepartAt(DateTime? v) { departAt = v; notifyListeners(); }
 
   void addCommutePair(CommutePair p) {
     commutePairs = [...commutePairs, p];

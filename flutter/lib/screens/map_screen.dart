@@ -13,7 +13,10 @@ import '../theme.dart';
 import '../utils/time_format.dart';
 import '../widgets/autocomplete_input.dart';
 import '../widgets/buttons.dart';
+import '../widgets/map_attribution.dart';
+import '../widgets/departure_time_sheet.dart';
 import '../widgets/navigation_app_sheet.dart';
+import '../widgets/parking_refresh_button.dart';
 import '../widgets/route_card.dart';
 
 const _initialCenter = LatLng(60.21, 25.0);
@@ -56,7 +59,10 @@ class _MapScreenState extends State<MapScreen>
 
   ({double lat, double lon})? originCoords;
   ({double lat, double lon})? destCoords;
-  ({double lat, double lon})? userLocation;
+  // Live device position for the location dot. A notifier rather than
+  // setState, so that each new fix redraws only the dot's marker layer.
+  final ValueNotifier<LatLng?> _userPosition = ValueNotifier(null);
+  StreamSubscription<Position>? _positionSub;
   String? error;
   bool hasSearched = false;
   String? selectedRouteId;
@@ -88,6 +94,7 @@ class _MapScreenState extends State<MapScreen>
     _appState = context.read<AppState>();
     _lastSeenSearchNonce = _appState.searchRequestNonce;
     _appState.addListener(_handleAppStateChange);
+    _startLocationUpdates();
   }
 
   void _handleAppStateChange() {
@@ -105,6 +112,8 @@ class _MapScreenState extends State<MapScreen>
   @override
   void dispose() {
     _appState.removeListener(_handleAppStateChange);
+    _positionSub?.cancel();
+    _userPosition.dispose();
     _sheetCtrl.dispose();
     _cardsScrollCtrl.dispose();
     super.dispose();
@@ -175,6 +184,34 @@ class _MapScreenState extends State<MapScreen>
         orElse: () => vr.first);
   }
 
+  ({double lat, double lon})? get userLocation {
+    final p = _userPosition.value;
+    return p == null ? null : (lat: p.latitude, lon: p.longitude);
+  }
+
+  /// Streams the device position into the location dot. Only checks the
+  /// permission and never asks for it, so the first permission prompt stays
+  /// tied to the locate button in the origin field.
+  Future<void> _startLocationUpdates() async {
+    if (_positionSub != null) return;
+    final perm = await Geolocator.checkPermission();
+    if (perm != LocationPermission.whileInUse &&
+        perm != LocationPermission.always) {
+      return;
+    }
+    if (!mounted || _positionSub != null) return;
+    _positionSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      ),
+    ).listen(
+      (pos) => _userPosition.value = LatLng(pos.latitude, pos.longitude),
+      // Location services off or no fix: keep the last known dot.
+      onError: (Object _) {},
+    );
+  }
+
   Future<void> _handleRequestLocation() async {
     LocationPermission perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied) {
@@ -194,11 +231,10 @@ class _MapScreenState extends State<MapScreen>
     final loc = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.medium,
     );
-    final coords = (lat: loc.latitude, lon: loc.longitude);
-    setState(() {
-      originCoords = coords;
-      userLocation = coords;
-    });
+    if (!mounted) return;
+    _userPosition.value = LatLng(loc.latitude, loc.longitude);
+    setState(() => originCoords = (lat: loc.latitude, lon: loc.longitude));
+    _startLocationUpdates();
 
     try {
       final placemarks =
@@ -295,6 +331,13 @@ class _MapScreenState extends State<MapScreen>
 
     setState(() => selectedFacility = null);
 
+    // A chosen time that has already passed (the app sat idle) means
+    // "leave now".
+    final departAt = state.departAt;
+    if (departAt != null && departAt.isBefore(DateTime.now())) {
+      state.setDepartAt(null);
+    }
+
     try {
       final found = await searchRoutes(
         oLat!,
@@ -307,6 +350,7 @@ class _MapScreenState extends State<MapScreen>
         destinationLabel: state.destination.trim().isEmpty
             ? 'Määränpää'
             : state.destination.trim(),
+        departAt: state.departAt,
       );
       state.setRoutes(found);
       setState(() {
@@ -339,11 +383,22 @@ class _MapScreenState extends State<MapScreen>
   void _maybeAutoSearch() {
     if (originCoords != null && destCoords != null) {
       final key =
-          '${originCoords!.lat},${originCoords!.lon}-${destCoords!.lat},${destCoords!.lon}';
+          '${originCoords!.lat},${originCoords!.lon}-${destCoords!.lat},${destCoords!.lon}'
+          '@${context.read<AppState>().departAt}';
       if (_lastSearchKey == key) return;
       _lastSearchKey = key;
       _handleSearch();
     }
+  }
+
+  Future<void> _pickDepartureTime() async {
+    final state = context.read<AppState>();
+    final choice =
+        await showDepartureTimeSheet(context, current: state.departAt);
+    if (choice == null || !mounted) return;
+    state.setDepartAt(choice.departAt);
+    // Runs again only when both endpoints are known and the time changed.
+    _maybeAutoSearch();
   }
 
   void _toggleFavourite() {
@@ -640,7 +695,6 @@ class _MapScreenState extends State<MapScreen>
       left: 0,
       right: 0,
       bottom: 0,
-      height: expandedHeight,
       child: AnimatedBuilder(
         animation: _sheetCtrl,
         builder: (context, child) {
@@ -650,7 +704,19 @@ class _MapScreenState extends State<MapScreen>
             child: child,
           );
         },
-        child: sheetContent,
+        // The map credit rides on the sheet's top edge so that it stays on
+        // the visible part of the map.
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Align(
+              alignment: Alignment.centerRight,
+              child: MapAttribution(),
+            ),
+            SizedBox(height: expandedHeight, child: sheetContent),
+          ],
+        ),
       ),
     );
   }
@@ -685,6 +751,9 @@ class _MapScreenState extends State<MapScreen>
       (p) => p.origin == state.origin && p.destination == state.destination,
     );
     final otherCount = (vr.length - 1).clamp(0, 99);
+    final showFacilitySheet =
+        !hasSearched && selectedFacility != null && !state.isSearching;
+    final showResultsSheet = hasResults || state.isSearching || error != null;
 
     return Scaffold(
       body: Stack(
@@ -714,17 +783,34 @@ class _MapScreenState extends State<MapScreen>
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+                urlTemplate: mapTileUrlTemplate,
+                tileProvider: NetworkTileProvider(headers: mapTileHeaders()),
                 userAgentPackageName: 'com.liityntaparkki.liityntaparkki',
                 maxNativeZoom: 19,
                 retinaMode: MediaQuery.of(context).devicePixelRatio > 1.0,
               ),
               PolylineLayer(polylines: _buildPolylines()),
+              // Under the P+R pins, so that the dot never hides a pin or
+              // takes its taps.
+              ValueListenableBuilder<LatLng?>(
+                valueListenable: _userPosition,
+                builder: (context, pos, _) => MarkerLayer(markers: [
+                  if (pos != null)
+                    Marker(
+                      point: pos,
+                      width: 32,
+                      height: 32,
+                      child: const _UserLocationDot(),
+                    ),
+                ]),
+              ),
               MarkerLayer(markers: _buildMarkers(state)),
             ],
           ),
+
+          // Map credit. When a sheet is open, the sheet carries it instead.
+          if (!showFacilitySheet && !showResultsSheet)
+            const Positioned(right: 0, bottom: 0, child: MapAttribution()),
 
           // Search overlay
           Positioned(
@@ -768,6 +854,44 @@ class _MapScreenState extends State<MapScreen>
                     _clearSearchResults();
                   },
                   focusPoint: userLocation,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Shrinks instead of overflowing when a long time label
+                    // and the clear pill do not fit on one row.
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: _MapPill(
+                          icon: LucideIcons.clock,
+                          label: formatDeparture(state.departAt),
+                          semanticLabel:
+                              'Valitse lähtöaika, ${formatDeparture(state.departAt)}',
+                          highlighted: state.departAt != null,
+                          onTap: _pickDepartureTime,
+                        ),
+                      ),
+                    ),
+                    if (hasSearched && !_isExpanded) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      _MapPill(
+                        icon: LucideIcons.x,
+                        label: 'Tyhjennä haku',
+                        onTap: () {
+                          state.setOrigin('');
+                          state.setDestination('');
+                          setState(() {
+                            originCoords = null;
+                            destCoords = null;
+                          });
+                          _clearSearchResults();
+                        },
+                      ),
+                    ],
+                  ],
                 ),
                 if (state.facilitiesError != null) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -817,71 +941,120 @@ class _MapScreenState extends State<MapScreen>
                     ),
                   ),
                 ],
-                if (hasSearched && !_isExpanded) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Semantics(
-                    button: true,
-                    label: 'Tyhjennä haku',
-                    child: Material(
-                      color: AppColors.bgWhite,
-                      borderRadius: BorderRadius.circular(AppRadii.xl),
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(AppRadii.xl),
-                        onTap: () {
-                          state.setOrigin('');
-                          state.setDestination('');
-                          setState(() {
-                            originCoords = null;
-                            destCoords = null;
-                          });
-                          _clearSearchResults();
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.bgWhite,
-                            borderRadius: BorderRadius.circular(AppRadii.xl),
-                            boxShadow: AppShadows.pill,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 14),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(LucideIcons.x,
-                                  size: 14, color: AppColors.textSecondary),
-                              const SizedBox(width: 4),
-                              Text('Tyhjennä haku',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                      color: AppColors.textSecondary)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
 
           // Facility sheet (pre-search)
-          if (!hasSearched && selectedFacility != null && !state.isSearching)
+          if (showFacilitySheet)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: _FacilitySheet(
-                facility: selectedFacility!,
-                onClose: () => setState(() => selectedFacility = null),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: MapAttribution(),
+                  ),
+                  _FacilitySheet(
+                    facility: selectedFacility!,
+                    onClose: () => setState(() => selectedFacility = null),
+                  ),
+                ],
               ),
             ),
 
           // Results bottom sheet
-          if (hasResults || state.isSearching || error != null)
+          if (showResultsSheet)
             _buildResultsSheet(state, vr, sel, hasResults, otherCount, isFav),
         ],
+      ),
+    );
+  }
+}
+
+/// White pill button that floats over the map under the search fields.
+class _MapPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? semanticLabel;
+  // Primary color, for a pill that shows a non-default choice.
+  final bool highlighted;
+  final VoidCallback onTap;
+  const _MapPill({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.semanticLabel,
+    this.highlighted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlighted ? AppColors.primary : AppColors.textSecondary;
+    return Semantics(
+      button: true,
+      label: semanticLabel ?? label,
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.bgWhite,
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.bgWhite,
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              boxShadow: AppShadows.pill,
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 4),
+                Text(label,
+                    style: AppTextStyles.bodySmall.copyWith(color: color)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "You are here" marker. The halo sets it apart from the plain origin dot
+/// that a search draws.
+class _UserLocationDot extends StatelessWidget {
+  const _UserLocationDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Oma sijainti',
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.2),
+          shape: BoxShape.circle,
+        ),
+        child: Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.bgWhite, width: 3),
+            boxShadow: AppShadows.pill,
+          ),
+        ),
       ),
     );
   }
@@ -1033,6 +1206,12 @@ class _FacilitySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    // The pin tap passes a snapshot. Read the live entry, so that the poll
+    // and the refresh button also update the counts in this sheet.
+    final facility = state.facilities.firstWhere(
+      (f) => f.id == this.facility.id,
+      orElse: () => this.facility,
+    );
     final isFav =
         state.favouriteParkingSpots.any((s) => s.facilityId == facility.id);
     final color = _availColor(facility.availability);
@@ -1074,22 +1253,34 @@ class _FacilitySheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            padding: const EdgeInsets.fromLTRB(12, 6, 0, 2),
+                            child: Row(
                               children: [
-                                Text(facility.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.bodyEmphasis.copyWith(
-                                        color: AppColors.textPrimary)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  formatUpdatedAgo(state.facilitiesUpdatedAt),
-                                  style: AppTextStyles.captionLight.copyWith(
-                                    color: AppColors.textSecondary,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(facility.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTextStyles.bodyEmphasis
+                                              .copyWith(
+                                                  color:
+                                                      AppColors.textPrimary)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        formatUpdatedAgo(
+                                            state.facilitiesUpdatedAt),
+                                        style: AppTextStyles.captionLight
+                                            .copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                                const ParkingRefreshButton(),
                               ],
                             ),
                           ),

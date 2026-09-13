@@ -152,49 +152,56 @@ class RouteCard extends StatelessWidget {
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        if (driveLeg != null) ...[
-                                          const Icon(LucideIcons.car,
-                                              size: 12,
-                                              color:
-                                                  AppColors.textSecondary),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                              '${driveLeg.durationMinutes} min',
-                                              style: AppTextStyles.captionLight.copyWith(
-                                                  color: AppColors
-                                                      .textSecondary)),
-                                          const SizedBox(width: 10),
+                                    // Shrinks instead of overflowing when a
+                                    // wide line badge leaves too little room.
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (driveLeg != null) ...[
+                                            const Icon(LucideIcons.car,
+                                                size: 12,
+                                                color:
+                                                    AppColors.textSecondary),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                                '${driveLeg.durationMinutes} min',
+                                                style: AppTextStyles.captionLight.copyWith(
+                                                    color: AppColors
+                                                        .textSecondary)),
+                                            const SizedBox(width: 10),
+                                          ],
+                                          if (transitLeg != null) ...[
+                                            if (_modeIcons[transitLeg.mode] !=
+                                                null)
+                                              Icon(
+                                                _modeIcons[transitLeg.mode],
+                                                size: 12,
+                                                color: _modeColors[
+                                                    transitLeg.mode],
+                                              ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                                '${transitLeg.durationMinutes} min',
+                                                style: AppTextStyles.captionLight.copyWith(
+                                                    color: AppColors
+                                                        .textSecondary)),
+                                            const SizedBox(width: 10),
+                                          ],
+                                          if (walkMinutes > 0) ...[
+                                            const Icon(LucideIcons.footprints,
+                                                size: 12,
+                                                color: AppColors.walkGray),
+                                            const SizedBox(width: 4),
+                                            Text('$walkMinutes min',
+                                                style: AppTextStyles.captionLight.copyWith(
+                                                    color: AppColors
+                                                        .textSecondary)),
+                                          ],
                                         ],
-                                        if (transitLeg != null) ...[
-                                          if (_modeIcons[transitLeg.mode] !=
-                                              null)
-                                            Icon(
-                                              _modeIcons[transitLeg.mode],
-                                              size: 12,
-                                              color:
-                                                  _modeColors[transitLeg.mode],
-                                            ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                              '${transitLeg.durationMinutes} min',
-                                              style: AppTextStyles.captionLight.copyWith(
-                                                  color: AppColors
-                                                      .textSecondary)),
-                                          const SizedBox(width: 10),
-                                        ],
-                                        if (walkMinutes > 0) ...[
-                                          const Icon(LucideIcons.footprints,
-                                              size: 12,
-                                              color: AppColors.walkGray),
-                                          const SizedBox(width: 4),
-                                          Text('$walkMinutes min',
-                                              style: AppTextStyles.captionLight.copyWith(
-                                                  color: AppColors
-                                                      .textSecondary)),
-                                        ],
-                                      ],
+                                      ),
                                     ),
                                   ],
                                 ),

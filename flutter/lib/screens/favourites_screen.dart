@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../utils/time_format.dart';
 import '../widgets/buttons.dart';
 import '../widgets/navigation_app_sheet.dart';
+import '../widgets/parking_refresh_button.dart';
 
 class FavouritesScreen extends StatelessWidget {
   const FavouritesScreen({super.key});
@@ -197,14 +198,24 @@ class FavouritesScreen extends StatelessWidget {
                       Text('Liityntäpysäköinnit',
                           style: AppTextStyles.sectionTitle.copyWith(
                               color: AppColors.textPrimary)),
-                      const Spacer(),
-                      if (state.favouriteParkingSpots.isNotEmpty)
-                        Text(
-                          formatUpdatedAgo(state.facilitiesUpdatedAt),
-                          style: AppTextStyles.labelLight.copyWith(
-                            color: AppColors.textSecondary,
+                      if (state.favouriteParkingSpots.isNotEmpty) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        // Shrinks instead of overflowing on narrow screens:
+                        // the refresh button takes a full 44pt of the row.
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              formatUpdatedAgo(state.facilitiesUpdatedAt),
+                              style: AppTextStyles.labelLight.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                           ),
                         ),
+                        const ParkingRefreshButton(),
+                      ],
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),

@@ -15,3 +15,11 @@ name = "RATE_LIMITER"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 60, period = 60 }
+
+# Map tiles get their own bucket: one map screen loads 20-40 tiles at once,
+# and panning loads more, which would exhaust the 60/min bucket above.
+[[unsafe.bindings]]
+name = "TILE_RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 600, period = 60 }

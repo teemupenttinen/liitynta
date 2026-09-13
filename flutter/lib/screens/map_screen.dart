@@ -8,12 +8,12 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/route.dart';
 import '../services/digitransit.dart';
-import '../services/navigation.dart' as nav;
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/time_format.dart';
 import '../widgets/autocomplete_input.dart';
 import '../widgets/buttons.dart';
+import '../widgets/navigation_app_sheet.dart';
 import '../widgets/route_card.dart';
 
 const _initialCenter = LatLng(60.21, 25.0);
@@ -821,7 +821,7 @@ class _MapScreenState extends State<MapScreen>
                   const SizedBox(height: AppSpacing.sm),
                   Semantics(
                     button: true,
-                    label: 'Tyhjennä haut',
+                    label: 'Tyhjennä haku',
                     child: Material(
                       color: AppColors.bgWhite,
                       borderRadius: BorderRadius.circular(AppRadii.xl),
@@ -852,7 +852,7 @@ class _MapScreenState extends State<MapScreen>
                               const Icon(LucideIcons.x,
                                   size: 14, color: AppColors.textSecondary),
                               const SizedBox(width: 4),
-                              Text('Tyhjennä haut',
+                              Text('Tyhjennä haku',
                                   style: AppTextStyles.bodySmall.copyWith(
                                       color: AppColors.textSecondary)),
                             ],
@@ -1045,21 +1045,13 @@ class _FacilitySheet extends StatelessWidget {
         ),
         boxShadow: AppShadows.sheet,
       ),
-      padding: const EdgeInsets.only(top: 16, bottom: 24),
+      // No grab handle: this sheet is a fixed-height card with nothing to
+      // expand to, so an affordance here would promise a gesture that does
+      // not exist.
+      padding: const EdgeInsets.only(top: AppSpacing.xl, bottom: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(AppRadii.xs / 2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Container(
@@ -1111,9 +1103,10 @@ class _FacilitySheet extends StatelessWidget {
                                     label: 'Navigoi parkkiin',
                                     semanticLabel:
                                         'Navigoi parkkiin ${facility.name}',
-                                    onTap: () => nav.navigateTo(
-                                      facility.latitude,
-                                      facility.longitude,
+                                    onTap: () => startDriveNavigation(
+                                      context,
+                                      lat: facility.latitude,
+                                      lon: facility.longitude,
                                       label: facility.name,
                                     ),
                                   ),

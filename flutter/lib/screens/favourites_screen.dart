@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/route.dart';
-import '../services/navigation.dart' as nav;
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../utils/time_format.dart';
 import '../widgets/buttons.dart';
+import '../widgets/navigation_app_sheet.dart';
 
 class FavouritesScreen extends StatelessWidget {
   const FavouritesScreen({super.key});
@@ -303,9 +303,13 @@ class FavouritesScreen extends StatelessWidget {
                                                     'Navigoi parkkiin ${spot.name}',
                                                 onTap: facility == null
                                                     ? null
-                                                    : () => nav.navigateTo(
-                                                          facility.latitude,
-                                                          facility.longitude,
+                                                    : () =>
+                                                        startDriveNavigation(
+                                                          context,
+                                                          lat: facility
+                                                              .latitude,
+                                                          lon: facility
+                                                              .longitude,
                                                           label: spot.name,
                                                         ),
                                               ),

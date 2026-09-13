@@ -8,6 +8,7 @@ import '../services/navigation.dart' as nav;
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/buttons.dart';
+import '../widgets/navigation_app_sheet.dart';
 
 class _ModeConfig {
   final Color color;
@@ -444,11 +445,20 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                         if (navState ==
                                 nav.NavigationState.navigateToDestination &&
                             dLat != null && dLon != null) {
-                          nav.navigateTransit(
-                              p.latitude, p.longitude, dLat, dLon);
+                          startTransitNavigation(
+                            context,
+                            fromLat: p.latitude,
+                            fromLon: p.longitude,
+                            toLat: dLat,
+                            toLon: dLon,
+                          );
                         } else {
-                          nav.navigateTo(p.latitude, p.longitude,
-                              label: p.name);
+                          startDriveNavigation(
+                            context,
+                            lat: p.latitude,
+                            lon: p.longitude,
+                            label: p.name,
+                          );
                         }
                       },
                       child: Text(

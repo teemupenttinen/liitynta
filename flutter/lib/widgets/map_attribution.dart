@@ -28,6 +28,11 @@ const _sources = [
     detail: 'Karttatyyli, CC BY 4.0',
     url: 'https://github.com/HSLdevcom/hsl-map-style',
   ),
+  (
+    title: '© Fintraffic',
+    detail: 'Pysäköintipaikat ja vapaat paikat, CC BY 4.0',
+    url: 'https://parking.fintraffic.fi/docs/index.html',
+  ),
 ];
 
 /// Map credit for the bottom right corner of the visible map. Tapping it

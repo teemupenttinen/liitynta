@@ -40,6 +40,10 @@ Avaa **Suosikit**-välilehti. Poista tallennettu reitti pyyhkäisemällä sitä 
 
 Navigointi avautuu Kartat-sovellukseen tai Google Mapsiin. Jos puhelimessasi on molemmat, sovellus kysyy, kumpaa haluat käyttää.
 
+### Mitä tietoja sovellus käsittelee?
+
+Lue [tietosuojaseloste](PRIVACY.md).
+
 ### Onko P+R Tutka HSL:n sovellus?
 
 Ei. P+R Tutka käyttää avoimia joukkoliikenne- ja pysäköintitietoja, mutta se ei ole HSL:n tuottama eikä HSL:n virallinen palvelu. Pysäköinnin hinnat ja aikarajoitukset vaihtelevat kohteittain, joten tarkista voimassa olevat ehdot HSL:n sivuilta ennen pysäköintiä.

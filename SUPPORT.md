@@ -5,7 +5,7 @@ Tarvitsetko apua P+R Tutka -sovelluksen kanssa tai löysitkö virheen? Ota yhtey
 ## Ota yhteyttä
 
 - **Sähköposti:** prtutka@gmail.com
-- **GitHub:** jos sinulla on GitHub-tili, voit ilmoittaa virheestä [GitHubissa](https://github.com/teemupenttinen/liityntaparkki/issues).
+- **GitHub:** jos sinulla on GitHub-tili, voit ilmoittaa virheestä [GitHubissa](https://github.com/teemupenttinen/liitynta/issues).
 
 Kerro viestissäsi:
 

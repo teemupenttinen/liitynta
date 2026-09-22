@@ -1,6 +1,6 @@
-# P+R Tutka – tuki
+# Liityntäpysäköinti – tuki
 
-Tarvitsetko apua P+R Tutka -sovelluksen kanssa tai löysitkö virheen? Ota yhteyttä.
+Tarvitsetko apua Liityntäpysäköinti-sovelluksen kanssa tai löysitkö virheen? Ota yhteyttä.
 
 ## Ota yhteyttä
 
@@ -44,6 +44,6 @@ Navigointi avautuu Kartat-sovellukseen tai Google Mapsiin. Jos puhelimessasi on 
 
 Lue [tietosuojaseloste](PRIVACY.md).
 
-### Onko P+R Tutka HSL:n sovellus?
+### Onko Liityntäpysäköinti HSL:n sovellus?
 
-Ei. P+R Tutka käyttää avoimia joukkoliikenne- ja pysäköintitietoja, mutta se ei ole HSL:n tuottama eikä HSL:n virallinen palvelu. Pysäköinnin hinnat ja aikarajoitukset vaihtelevat kohteittain, joten tarkista voimassa olevat ehdot HSL:n sivuilta ennen pysäköintiä.
+Ei. Liityntäpysäköinti käyttää avoimia joukkoliikenne- ja pysäköintitietoja, mutta se ei ole HSL:n tuottama eikä HSL:n virallinen palvelu. Pysäköinnin hinnat ja aikarajoitukset vaihtelevat kohteittain, joten tarkista voimassa olevat ehdot HSL:n sivuilta ennen pysäköintiä.

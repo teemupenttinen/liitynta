@@ -100,7 +100,7 @@ class LiityntaparkkiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'P+R Tutka',
+      title: 'Liityntäpysäköinti',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       initialRoute: '/',

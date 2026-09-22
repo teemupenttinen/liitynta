@@ -1,8 +1,8 @@
-# P+R Tutka – tietosuojaseloste
+# Liityntäpysäköinti – tietosuojaseloste
 
 Päivitetty 19.9.2026
 
-Tämä seloste kertoo, mitä tietoja P+R Tutka -sovellus käsittelee, miksi ja kenen kanssa.
+Tämä seloste kertoo, mitä tietoja Liityntäpysäköinti-sovellus käsittelee, miksi ja kenen kanssa.
 
 ## Lyhyesti
 

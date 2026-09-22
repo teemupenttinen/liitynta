@@ -1,4 +1,4 @@
-# P+R Tutka
+# Liityntäpysäköinti
 
 A mobile app that helps Finnish commuters find park-and-ride (P+R) facilities. Search an origin and destination, browse routes ranked by travel time with real-time parking availability, and get contextual navigation handoff to native maps for the driving and transit legs.
 
